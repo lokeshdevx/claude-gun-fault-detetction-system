@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SYSTEM_PROMPT = `You are a certified senior firearm barrel inspection specialist with 20+ years of experience in defense armament quality control. Your task is to perform an exhaustive, forensic-level analysis of this endoscopic barrel image.
+const ANALYSIS_PROMPT = `You are a certified senior firearm barrel inspection specialist with 20+ years of experience in defense armament quality control. Your task is to perform an exhaustive, forensic-level analysis of this endoscopic barrel image.
 
 YOU MUST DETECT AND REPORT ALL OF THESE DEFECT TYPES IF PRESENT — REPORT EVERY ONE YOU SEE:
 1. Pitting
@@ -276,6 +276,15 @@ Return ONLY valid JSON. No markdown. No explanation. No extra text. Exactly this
 }`;
 
 export async function POST(req: NextRequest) {
+  // ── Key guard — must be checked inside the handler, not at module level ──
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "ANTHROPIC_API_KEY is not configured on the server" },
+      { status: 500 }
+    );
+  }
+
   try {
     const { base64, mediaType } = await req.json();
 
@@ -287,13 +296,13 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY || "",
+        "x-api-key": apiKey,                  // ← uses the guarded variable, never ""
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",  // Using the working model from old code
+        model: "claude-sonnet-4-6",
         max_tokens: 4096,
-        system: SYSTEM_PROMPT,
+        system: ANALYSIS_PROMPT,
         messages: [
           {
             role: "user",
@@ -318,13 +327,15 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const err = await response.text();
-      return NextResponse.json({ error: `Claude API error: ${err}` }, { status: response.status });
+      return NextResponse.json(
+        { error: `Anthropic API error: ${err}` },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
     const rawText = data.content?.[0]?.text || "{}";
 
-    // Clean potential markdown fences
     const cleaned = rawText
       .replace(/```json\s*/gi, "")
       .replace(/```\s*/g, "")
