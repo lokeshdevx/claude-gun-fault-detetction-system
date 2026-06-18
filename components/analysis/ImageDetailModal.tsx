@@ -12,14 +12,42 @@ interface Props {
 }
 
 /**
+ * The only 9 defect names that are allowed to be displayed.
+ * Any issue returned by the API whose issueName is NOT in this list
+ * will be silently dropped before rendering.
+ */
+const ALLOWED_DEFECTS: string[] = [
+  "Bulge",
+  "Flecking Off",
+  "Ringed Barrel",
+  "Pitting",
+  "Cuts",
+  "Scratch / Scoring",
+  "Corrosion",
+  "Dent",
+  "Carbon Deposit",
+];
+
+/**
  * The API returns confidence as a float 0–1 (e.g. 0.85).
  * Multiply by 100 and round to display as a percentage integer.
  */
 function formatConfidence(confidence: number | undefined): string {
   if (confidence === undefined || confidence === null) return "0%";
-  // Guard: if someone passes an already-scaled value (>1) don't double-scale.
   const pct = confidence <= 1 ? Math.round(confidence * 100) : Math.round(confidence);
   return `${pct}%`;
+}
+
+/**
+ * Filters the raw issues array from the API, keeping only issues whose
+ * issueName exactly matches one of the 9 allowed defect types.
+ * Any unknown, misspelled, or unlisted defect name is dropped silently.
+ */
+function filterAllowedIssues(issues: BarrelIssue[]): BarrelIssue[] {
+  return issues.filter((issue) => {
+    const name = (issue.issueName ?? "").trim();
+    return ALLOWED_DEFECTS.includes(name);
+  });
 }
 
 export function ImageDetailModal({ image, onClose }: Props) {
@@ -29,7 +57,13 @@ export function ImageDetailModal({ image, onClose }: Props) {
   if (!image) return null;
 
   const ar = image.analysisResult;
-  const issues = ar?.issues || [];
+
+  // Filter out any issues not in the allowed list before rendering
+  const rawIssues = ar?.issues ?? [];
+  const issues = filterAllowedIssues(rawIssues);
+
+  // Recompute criticalIssues count from filtered list only
+  const criticalIssues = issues.filter((i) => i.severity === "High").length;
 
   const handleZoomIn = () => setZoom((z) => Math.min(z + 0.25, 3));
   const handleZoomOut = () => setZoom((z) => Math.max(z - 0.25, 0.5));
@@ -58,7 +92,9 @@ export function ImageDetailModal({ image, onClose }: Props) {
                 {image.position || image.fileName || "Untitled Image"}
               </h2>
               <p className="text-xs text-gray-400">
-                {image.capturedAt ? new Date(image.capturedAt).toLocaleString() : "Unknown date"}
+                {image.capturedAt
+                  ? new Date(image.capturedAt).toLocaleString()
+                  : "Unknown date"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -129,10 +165,14 @@ export function ImageDetailModal({ image, onClose }: Props) {
               {/* Quality Issues */}
               {image.qualityIssues && image.qualityIssues.length > 0 && (
                 <div className="mt-3 bg-yellow-950/30 border border-yellow-900/30 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-yellow-400 mb-1">Quality Issues</p>
+                  <p className="text-xs font-semibold text-yellow-400 mb-1">
+                    Quality Issues
+                  </p>
                   <ul className="list-disc list-inside">
                     {image.qualityIssues.map((q, i) => (
-                      <li key={i} className="text-xs text-yellow-300/70">{q}</li>
+                      <li key={i} className="text-xs text-yellow-300/70">
+                        {q}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -150,6 +190,11 @@ export function ImageDetailModal({ image, onClose }: Props) {
                     <p className="text-sm text-white">
                       {ar.overallCondition || "No condition assessment available"}
                     </p>
+                    {criticalIssues > 0 && (
+                      <p className="text-xs text-red-400 mt-1">
+                        {criticalIssues} critical issue{criticalIssues > 1 ? "s" : ""} detected
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -160,26 +205,38 @@ export function ImageDetailModal({ image, onClose }: Props) {
                       </div>
                     ) : (
                       issues.map((issue, i) => (
-                        <div key={i} className="bg-[#1a2230] rounded-lg border border-[#2d3d4f] p-3">
+                        <div
+                          key={i}
+                          className="bg-[#1a2230] rounded-lg border border-[#2d3d4f] p-3"
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-semibold text-white">
-                              {issue.issueName || "Unknown Issue"}
+                              {issue.issueName}
                             </span>
                             <SeverityBadge severity={issue.severity || "low"} />
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs text-gray-400 mb-2">
                             <span>
-                              {/* confidence is 0–1 from the API; convert to % for display */}
-                              Confidence: <span className="text-white">{formatConfidence(issue.confidence)}</span>
+                              Confidence:{" "}
+                              <span className="text-white">
+                                {formatConfidence(issue.confidence)}
+                              </span>
                             </span>
                             <span>
-                              Area: <span className="text-white">{issue.affectedArea || "Unknown"}</span>
+                              Area:{" "}
+                              <span className="text-white">
+                                {issue.affectedArea || "Unknown"}
+                              </span>
                             </span>
                             <span>
-                              Risk: <span className="text-orange-300">{issue.riskLevel || "Unknown"}</span>
+                              Risk:{" "}
+                              <span className="text-orange-300">
+                                {issue.riskLevel || "Unknown"}
+                              </span>
                             </span>
                             <span>
-                              Location: <span className="text-white capitalize">
+                              Location:{" "}
+                              <span className="text-white capitalize">
                                 {issue.location?.replace(/-/g, " ") || "Center"}
                               </span>
                             </span>
@@ -189,14 +246,20 @@ export function ImageDetailModal({ image, onClose }: Props) {
                           </p>
                           {issue.solution && (
                             <div className="mt-2 pt-2 border-t border-[#2d3d4f]">
-                              <p className="text-xs text-[#8fa84d] font-semibold mb-0.5">Solution</p>
+                              <p className="text-xs text-[#8fa84d] font-semibold mb-0.5">
+                                Solution
+                              </p>
                               <p className="text-xs text-gray-300">{issue.solution}</p>
                             </div>
                           )}
                           {issue.maintenanceAction && (
                             <div className="mt-1.5">
-                              <p className="text-xs text-blue-400 font-semibold mb-0.5">Maintenance</p>
-                              <p className="text-xs text-gray-300">{issue.maintenanceAction}</p>
+                              <p className="text-xs text-blue-400 font-semibold mb-0.5">
+                                Maintenance
+                              </p>
+                              <p className="text-xs text-gray-300">
+                                {issue.maintenanceAction}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -208,7 +271,9 @@ export function ImageDetailModal({ image, onClose }: Props) {
                 <div className="flex flex-col items-center justify-center h-48 text-gray-500">
                   <AlertTriangle className="w-8 h-8 mb-2" />
                   <p className="text-sm">Not yet analyzed</p>
-                  <p className="text-xs mt-1">Click "Analyze" to process this image</p>
+                  <p className="text-xs mt-1">
+                    Click "Analyze" to process this image
+                  </p>
                 </div>
               )}
             </div>
