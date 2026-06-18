@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // ─── Next.js Route Segment Config ─────────────────────────────────────────────
-// Prevents the serverless function from being killed before the response arrives.
-// Vercel Hobby: max 60s — change both this and FETCH_TIMEOUT_MS to 60 / 60_000.
-// Vercel Pro/Enterprise: up to 300s.
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
@@ -12,8 +9,8 @@ export const dynamic = "force-dynamic";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 4096;
-const FETCH_TIMEOUT_MS = 300_000; // 5 minutes — barrel vision analysis can be slow
-const MAX_PAYLOAD_BYTES = 25 * 1024 * 1024; // 25 MB
+const FETCH_TIMEOUT_MS = 300_000;
+const MAX_PAYLOAD_BYTES = 25 * 1024 * 1024;
 
 const VALID_MEDIA_TYPES = [
   "image/jpeg",
@@ -255,20 +252,19 @@ OUTPUT FORMAT (STRICT JSON - NO MARKDOWN)
   "overallCondition": "",
   "criticalIssues": 0,
   "issues": [
-   {
-  "issueName": "",
-  "severity": "",
-  "confidence": 0,
-  "description": "",
-  "evidence": "",
-  "rootCause": "",
-  "solution": "",
-  "inspectionSentence": "",
-  "maintenanceAction": "",
-  "riskLevel": "",
-  "affectedArea": "",
-  "location": ""
-}
+    {
+      "issueName": "",
+      "severity": "",
+      "confidence": 0,
+      "description": "",
+      "evidence": "",
+      "rootCause": "",
+      "solution": "",
+      "maintenanceAction": "",
+      "riskLevel": "",
+      "affectedArea": "",
+      "location": ""
+    }
   ]
 }`;
 
@@ -296,6 +292,82 @@ interface AnalysisResult {
   overallCondition: string;
   criticalIssues: number;
   issues: AnalysisIssue[];
+}
+
+// ─── Anthropic error shape ────────────────────────────────────────────────────
+
+interface AnthropicErrorBody {
+  type?: string;
+  error?: {
+    type?: string;
+    message?: string;
+  };
+}
+
+/**
+ * Parse the Anthropic error body and return:
+ * - userMessage: safe to send to the client
+ * - logDetail:   full detail for server logs only
+ */
+async function parseAnthropicError(
+  response: Response
+): Promise<{ userMessage: string; logDetail: string }> {
+  let raw = "(unreadable)";
+  let parsed: AnthropicErrorBody = {};
+
+  try {
+    raw = await response.text();
+    parsed = JSON.parse(raw) as AnthropicErrorBody;
+  } catch {
+    // raw stays as-is, parsed stays empty
+  }
+
+  const apiMessage = parsed?.error?.message ?? "";
+  const apiType = parsed?.error?.type ?? "";
+  const logDetail = `status=${response.status} type=${apiType} message=${apiMessage || raw}`;
+
+  switch (response.status) {
+    case 400:
+      // Most common cause: image too large (>5 MB decoded), unsupported format,
+      // or a base64 encoding issue. The Anthropic message usually says which.
+      return {
+        userMessage: apiMessage
+          ? `Request rejected by analysis service: ${apiMessage}`
+          : "Invalid request sent to analysis service. Check image format and size.",
+        logDetail,
+      };
+    case 401:
+      return {
+        userMessage: "Analysis service authentication failed. Contact support.",
+        logDetail,
+      };
+    case 403:
+      return {
+        userMessage: "Access denied by analysis service. Contact support.",
+        logDetail,
+      };
+    case 413:
+      return {
+        userMessage:
+          "Image is too large for the analysis service. Please use a smaller image.",
+        logDetail,
+      };
+    case 529:
+    case 503:
+    case 502:
+      return {
+        userMessage:
+          "Analysis service is temporarily overloaded. Please try again in a moment.",
+        logDetail,
+      };
+    default:
+      return {
+        userMessage: apiMessage
+          ? `Analysis service error: ${apiMessage}`
+          : `Analysis service returned status ${response.status}. Please try again.`,
+        logDetail,
+      };
+  }
 }
 
 // ─── Validation helpers ───────────────────────────────────────────────────────
@@ -343,10 +415,6 @@ function isMaintenanceAction(value: unknown): value is MaintenanceAction {
   );
 }
 
-/**
- * Sanitise and coerce a raw issue object into a typed AnalysisIssue.
- * Falls back to safe defaults for any field that is missing, null, or invalid.
- */
 function sanitiseIssue(raw: Record<string, unknown>): AnalysisIssue {
   return {
     issueName:
@@ -385,8 +453,7 @@ function sanitiseIssue(raw: Record<string, unknown>): AnalysisIssue {
         ? raw.affectedArea.trim()
         : "Unknown",
     location:
-      typeof raw.location === "string" &&
-      VALID_LOCATIONS.includes(raw.location)
+      typeof raw.location === "string" && VALID_LOCATIONS.includes(raw.location)
         ? raw.location
         : "center",
   };
@@ -394,18 +461,13 @@ function sanitiseIssue(raw: Record<string, unknown>): AnalysisIssue {
 
 // ─── String helpers ───────────────────────────────────────────────────────────
 
-/** Strip data-URL prefix browsers attach to base64 strings. */
 function stripBase64Prefix(base64: string): string {
   return base64.replace(/^data:image\/[a-zA-Z+]+;base64,/, "").trim();
 }
 
-/**
- * Remove markdown code fences Claude occasionally wraps around JSON.
- * Also trims leading/trailing whitespace and BOM characters.
- */
 function cleanJsonText(text: string): string {
   return text
-    .replace(/^\uFEFF/, "")          // BOM
+    .replace(/^\uFEFF/, "")
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
     .trim();
@@ -413,44 +475,27 @@ function cleanJsonText(text: string): string {
 
 // ─── Domain helpers ───────────────────────────────────────────────────────────
 
-/** Always recompute criticalIssues from the issues array — never trust the model. */
 function recomputeCriticalIssues(issues: AnalysisIssue[]): number {
   return issues.filter((i) => i.severity === "High").length;
 }
 
-/**
- * Derive the overall condition from the actual issues array so the result
- * is always internally consistent, regardless of what the model returned.
- */
 function deriveOverallCondition(issues: AnalysisIssue[]): string {
-  if (issues.some((i) => i.severity === "High")) {
-    return "Immediate Replacement Required";
-  }
-  if (
-    issues.some((i) => i.severity === "Medium") ||
-    issues.some((i) => i.severity === "Low")
-  ) {
+  if (issues.some((i) => i.severity === "High")) return "Immediate Replacement Required";
+  if (issues.some((i) => i.severity === "Medium") || issues.some((i) => i.severity === "Low"))
     return "Maintenance Required";
-  }
   return "Safe for Use";
 }
 
-/** Clamp a number to [min, max]. */
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-/**
- * Apply safe defaults to every field, sanitise all issues, and recompute
- * derived fields (criticalIssues, overallCondition) from the real data.
- */
 function applyDefaults(parsed: Record<string, unknown>): AnalysisResult {
   const rawIssues = Array.isArray(parsed.issues) ? parsed.issues : [];
-
-  // Filter out non-object entries and sanitise each one.
   const issues: AnalysisIssue[] = rawIssues
-    .filter((item): item is Record<string, unknown> =>
-      item !== null && typeof item === "object" && !Array.isArray(item)
+    .filter(
+      (item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object" && !Array.isArray(item)
     )
     .map((item) => sanitiseIssue(item));
 
@@ -469,28 +514,24 @@ function applyDefaults(parsed: Record<string, unknown>): AnalysisResult {
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
-/** All methods other than POST return 405 with an Allow header. */
 export async function GET() {
   return NextResponse.json(
     { error: "Method not allowed" },
     { status: 405, headers: { Allow: "POST" } }
   );
 }
-
 export async function PUT() {
   return NextResponse.json(
     { error: "Method not allowed" },
     { status: 405, headers: { Allow: "POST" } }
   );
 }
-
 export async function PATCH() {
   return NextResponse.json(
     { error: "Method not allowed" },
     { status: 405, headers: { Allow: "POST" } }
   );
 }
-
 export async function DELETE() {
   return NextResponse.json(
     { error: "Method not allowed" },
@@ -499,17 +540,17 @@ export async function DELETE() {
 }
 
 export async function POST(req: NextRequest) {
-  // 1. Ensure the API key is configured server-side.
+  // 1. API key check.
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("[barrel-analysis] ANTHROPIC_API_KEY is not set");
-    return NextResponse.json(
-      { error: "Server configuration error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  // 2. Enforce payload size limit before buffering the body.
+  // Log key prefix only — never log the full key.
+  console.log(`[barrel-analysis] Using API key: ${apiKey.slice(0, 10)}…`);
+
+  // 2. Payload size guard.
   const contentLength = req.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_BYTES) {
     return NextResponse.json(
@@ -518,17 +559,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 3. Parse and validate the request body.
+  // 3. Parse body.
   let base64Raw: unknown;
   let mediaTypeRaw: unknown;
-
   try {
     const body: unknown = await req.json();
     if (body === null || typeof body !== "object" || Array.isArray(body)) {
-      return NextResponse.json(
-        { error: "Request body must be a JSON object" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Request body must be a JSON object" }, { status: 400 });
     }
     const typedBody = body as Record<string, unknown>;
     base64Raw = typedBody.base64;
@@ -538,34 +575,32 @@ export async function POST(req: NextRequest) {
   }
 
   if (typeof base64Raw !== "string" || base64Raw.trim() === "") {
-    return NextResponse.json(
-      { error: "Missing or empty 'base64' field" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing or empty 'base64' field" }, { status: 400 });
   }
 
-  // 4. Resolve media type against the whitelist; default to image/jpeg.
+  // 4. Media type.
   const resolvedMediaType: ValidMediaType =
     typeof mediaTypeRaw === "string" &&
     VALID_MEDIA_TYPES.includes(mediaTypeRaw as ValidMediaType)
       ? (mediaTypeRaw as ValidMediaType)
       : "image/jpeg";
 
-  // 5. Strip the data-URL prefix if the client included it.
+  // 5. Strip data-URL prefix and validate base64 charset.
   const base64Clean = stripBase64Prefix(base64Raw);
-
-  // Sanity-check: base64 strings contain only [A-Za-z0-9+/=].
   if (!/^[A-Za-z0-9+/=\r\n]+$/.test(base64Clean)) {
-    return NextResponse.json(
-      { error: "Invalid base64 image data" },
-      { status: 400 }
+    return NextResponse.json({ error: "Invalid base64 image data" }, { status: 400 });
+  }
+
+  // Log approximate decoded size — Anthropic rejects images > ~5 MB decoded.
+  const approxKB = Math.round((base64Clean.length * 3) / 4 / 1024);
+  console.log(`[barrel-analysis] Image payload ~${approxKB} KB, mediaType=${resolvedMediaType}`);
+  if (approxKB > 5_000) {
+    console.warn(
+      `[barrel-analysis] Image is ~${approxKB} KB — Anthropic may reject images over ~5 MB decoded.`
     );
   }
 
-  // 6. Call the Anthropic API.
-  // AbortController timeout is set to FETCH_TIMEOUT_MS (5 minutes).
-  // The Next.js maxDuration export above must be >= this value so the
-  // serverless function is not killed before the fetch completes.
+  // 6. Call Anthropic API.
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -607,31 +642,24 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     clearTimeout(timeout);
-    const isAbort = err instanceof Error && err.name === "AbortError";
-    if (isAbort) {
+    if (err instanceof Error && err.name === "AbortError") {
+      console.error("[barrel-analysis] Request timed out after 5 minutes");
       return NextResponse.json(
         { error: "Analysis request timed out after 5 minutes. Please try again." },
         { status: 504 }
       );
     }
-    console.error("[barrel-analysis] Fetch error:", err);
-    return NextResponse.json(
-      { error: "Failed to reach analysis service" },
-      { status: 502 }
-    );
+    console.error("[barrel-analysis] Network fetch error:", err);
+    return NextResponse.json({ error: "Failed to reach analysis service" }, { status: 502 });
   } finally {
     clearTimeout(timeout);
   }
 
-  // 7. Handle non-OK responses from Anthropic — log details server-side only.
+  // 7. Handle non-OK Anthropic responses with full diagnosis.
   if (!anthropicResponse.ok) {
-    const errText = await anthropicResponse.text().catch(() => "(unreadable)");
-    console.error(
-      `[barrel-analysis] Anthropic API error [${anthropicResponse.status}]:`,
-      errText
-    );
+    const { userMessage, logDetail } = await parseAnthropicError(anthropicResponse);
+    console.error(`[barrel-analysis] Anthropic API error — ${logDetail}`);
 
-    // Surface rate-limit errors explicitly so callers can back off.
     if (anthropicResponse.status === 429) {
       return NextResponse.json(
         { error: "Rate limit reached. Please wait before retrying." },
@@ -639,29 +667,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      { error: "Analysis service error. Please try again." },
-      { status: anthropicResponse.status }
-    );
+    // Forward the Anthropic HTTP status so callers can distinguish
+    // 400 (bad image/request) from 5xx (service-side problems).
+    return NextResponse.json({ error: userMessage }, { status: anthropicResponse.status });
   }
 
-  // 8. Parse the Anthropic API response envelope.
+  // 8. Parse Anthropic response envelope.
   let apiData: unknown;
   try {
     apiData = await anthropicResponse.json();
   } catch {
+    console.error("[barrel-analysis] Failed to parse Anthropic response as JSON");
     return NextResponse.json(
       { error: "Invalid response from analysis service" },
       { status: 500 }
     );
   }
 
-  // 9. Extract the first text block — fail explicitly if absent.
-  if (
-    apiData === null ||
-    typeof apiData !== "object" ||
-    Array.isArray(apiData)
-  ) {
+  if (apiData === null || typeof apiData !== "object" || Array.isArray(apiData)) {
     console.error("[barrel-analysis] Unexpected API data shape:", apiData);
     return NextResponse.json(
       { error: "Unexpected response format from analysis service" },
@@ -670,8 +693,27 @@ export async function POST(req: NextRequest) {
   }
 
   const apiObj = apiData as Record<string, unknown>;
-  const contentArray = apiObj.content;
 
+  // 9. Check stop_reason — "max_tokens" means the JSON was truncated mid-response.
+  const stopReason = apiObj.stop_reason;
+  console.log(`[barrel-analysis] Anthropic stop_reason=${stopReason}`);
+  if (stopReason === "max_tokens") {
+    console.warn(
+      "[barrel-analysis] Response truncated (max_tokens hit). " +
+        "JSON will be incomplete. Increase MAX_TOKENS if this recurs."
+    );
+    return NextResponse.json(
+      {
+        error:
+          "Analysis response was truncated due to length. " +
+          "The image may be very complex — please try again.",
+      },
+      { status: 500 }
+    );
+  }
+
+  // 10. Extract text block.
+  const contentArray = apiObj.content;
   if (!Array.isArray(contentArray)) {
     console.error("[barrel-analysis] Missing content array:", apiObj);
     return NextResponse.json(
@@ -691,7 +733,7 @@ export async function POST(req: NextRequest) {
 
   if (!textBlock) {
     console.error(
-      "[barrel-analysis] No text block in Anthropic response:",
+      "[barrel-analysis] No text block found in response:",
       JSON.stringify(apiObj)
     );
     return NextResponse.json(
@@ -700,23 +742,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 10. Clean and parse the JSON payload.
+  // 11. Parse JSON from model output.
   const cleaned = cleanJsonText(textBlock.text);
   let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
-  } catch {
+  } catch (parseErr) {
     console.error(
-      "[barrel-analysis] JSON parse error. Raw text:",
-      textBlock.text
+      "[barrel-analysis] JSON parse error.",
+      "\nError:", parseErr,
+      "\nRaw model output (first 500 chars):", textBlock.text.slice(0, 500)
     );
     return NextResponse.json(
-      { error: "Failed to parse analysis response" },
+      { error: "Failed to parse analysis response. The model returned malformed JSON." },
       { status: 500 }
     );
   }
 
-  // Guard: parsed must be a plain object.
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     return NextResponse.json(
       { error: "Analysis response has unexpected shape" },
@@ -724,8 +766,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 11. Sanitise, apply defaults, and recompute derived fields.
+  // 12. Sanitise, recompute derived fields, and return.
   const result = applyDefaults(parsed as Record<string, unknown>);
-
+  console.log(
+    `[barrel-analysis] Success — score=${result.barrelHealthScore} ` +
+      `issues=${result.issues.length} critical=${result.criticalIssues}`
+  );
   return NextResponse.json(result, { status: 200 });
 }
