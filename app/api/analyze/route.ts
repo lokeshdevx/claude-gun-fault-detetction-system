@@ -37,13 +37,31 @@ For EACH of the listed defect categories:
 - A single visual anomaly may belong to multiple defect categories if evidence supports it.
 - Missing a visible defect is considered a critical inspection failure.
 
-IMAGE ANALYSIS REQUIREMENTS:
+════════════════════════════════════════
+IMAGE VIEW TYPE — IDENTIFY FIRST
+════════════════════════════════════════
+
+BEFORE inspecting defects, determine the image view type:
+
+A) END-ON / MUZZLE VIEW: Camera is looking straight into the bore from the muzzle or breech end.
+   Visual cues: circular bore opening dominates the image, concentric rings visible, rifling spirals inward.
+
+B) SIDE / ENDOSCOPIC VIEW: Camera is inside the barrel looking along the bore axis.
+   Visual cues: rifling lands and grooves run lengthwise, cylindrical tunnel perspective.
+
+The view type determines how each defect will appear. Apply the correct detection rules below.
+
+════════════════════════════════════════
+IMAGE ANALYSIS REQUIREMENTS
+════════════════════════════════════════
 - Inspect the image from top-to-bottom and left-to-right.
 - Examine all visible barrel surfaces, rifling, grooves, lands, coating areas, and deposits.
 - Evaluate color, texture, shape, geometry, surface condition, and coating integrity.
 - Look for both primary defects and secondary defects that may occur together.
 
-EVIDENCE REQUIREMENT:
+════════════════════════════════════════
+EVIDENCE REQUIREMENT
+════════════════════════════════════════
 Every reported defect MUST include:
 - Specific visual evidence
 - Exact image location
@@ -51,38 +69,154 @@ Every reported defect MUST include:
 - Severity assessment
 - Confidence score
 
-CONFIDENCE GUIDELINES:
+════════════════════════════════════════
+CONFIDENCE GUIDELINES
+════════════════════════════════════════
 - Use high confidence only when clear visual evidence exists.
 - Reduce confidence when image quality, lighting, blur, reflections, shadows, fouling, or obstruction limits certainty.
 - Never assign confidence above 0.95 unless evidence is exceptionally clear.
-
-IMPORTANT:
-- Do not ignore small defects.
-- Do not merge different defect types into a single finding.
-- Report all observable defects independently.
-- If uncertainty exists, report with lower confidence rather than omitting visible evidence.
-- Be conservative when classifying structural defects but thorough when documenting surface abnormalities.
 
 ════════════════════════════════════════
 DEFECT TYPES TO IDENTIFY (CHECK EACH)
 ════════════════════════════════════════
 
-For EACH of these 15 defect types, determine if present:
-1. Pitting - Small dark holes, craters, or indentations
-2. Bulge - Outward swelling, deformation, or asymmetric barrel wall
-3. Corrosion - Brown, reddish-brown, orange-brown, rust-colored areas (CRITICAL: Any brown/rust color = corrosion)
-4. Flecking Off - Peeling, chipping, or detachment of protective coating
-5. Surface Spots - Localized abnormal dark, brown, black, orange, gray, or metallic spots
-6. Cracks - Linear fractures, splits, or fissures
-7. Erosion - Gradual surface wear, roughened texture
-8. Carbon Fouling - Black or dark gray residue deposits
-9. Rifling Wear - Rounded, smoothed, or diminished rifling lands and grooves
-10. Spot - Single well-defined circular/oval mark (1-10mm, clear boundary)
-11. Cuts - Sharp, clean-edged incisions penetrating into metal substrate
-12. Ringed Barrel - Circular internal swelling around barrel circumference
-13. Dent - Localized inward deformation
-14. Scratch/Scoring - Linear grooves parallel to bore axis
-15. Chrome Lining Damage - Peeling, cracking, flaking, or uneven chrome
+──────────────────────────────────────
+1. PITTING
+──────────────────────────────────────
+Definition: Small dark holes, craters, or indentations in the bore surface.
+
+END-ON VIEW: Appears as small dark dots or irregular dark patches on the visible inner bore wall surface.
+SIDE VIEW: Appears as small dark craters or holes pitting the surface along the bore walls.
+
+──────────────────────────────────────
+2. BULGE
+──────────────────────────────────────
+Definition: Outward swelling or deformation of the barrel wall.
+
+⚠ END-ON VIEW — CRITICAL DETECTION RULE:
+When viewing the barrel end-on (muzzle or breech view), a bulge DOES NOT appear as outward swelling.
+Instead, look for ALL of the following indicators:
+  - A dark circular ring, band, or shadow ring INSIDE the bore (ring-within-a-ring appearance)
+  - An asymmetric, irregular, or non-circular inner bore outline
+  - A visible constriction point or narrowing of the bore at any depth
+  - Any circular anomaly, shadow band, or tonal change inside the bore that does not match the normal bore geometry
+  - A distinct darker or lighter band encircling the interior bore wall
+If ANY of the above is visible → MUST report as Bulge with appropriate severity.
+
+SIDE VIEW: Appears as a visible outward bump or widening of the barrel wall, distorted rifling geometry at one location.
+
+──────────────────────────────────────
+3. CORROSION
+──────────────────────────────────────
+Definition: Rust or oxidation — brown, reddish-brown, orange-brown, or rust-colored areas.
+CRITICAL: ANY brown or rust color anywhere in the image = Corrosion. Do not confuse with lighting.
+
+END-ON VIEW: Brown/rust patches on the muzzle face, bore opening edge, or visible inner bore surface.
+SIDE VIEW: Brown/rust discoloration on lands, grooves, or bore walls.
+
+──────────────────────────────────────
+4. FLECKING OFF
+──────────────────────────────────────
+Definition: Peeling, chipping, or detachment of protective coating.
+
+END-ON VIEW: Irregular bright or light patches where dark coating is absent on the muzzle face or bore edge.
+SIDE VIEW: Patchy areas where coating is lifting or absent along bore walls.
+
+──────────────────────────────────────
+5. SURFACE SPOTS
+──────────────────────────────────────
+Definition: Localized abnormal dark, brown, black, orange, gray, or metallic spots.
+
+END-ON VIEW: Multiple scattered spots visible on the muzzle face or inside the bore.
+SIDE VIEW: Spots distributed across the bore surface.
+
+──────────────────────────────────────
+6. CRACKS
+──────────────────────────────────────
+Definition: Linear fractures, splits, or fissures in the metal surface.
+
+END-ON VIEW: Visible as straight or branching dark lines radiating from the bore center, across the muzzle face, or along the inner bore wall.
+SIDE VIEW: Linear fractures running across or along the bore walls.
+
+──────────────────────────────────────
+7. EROSION
+──────────────────────────────────────
+Definition: Gradual surface wear resulting in roughened, irregular texture.
+
+END-ON VIEW: Roughened or irregular texture visible on the muzzle face or bore edge.
+SIDE VIEW: Roughened bore surface, loss of smooth finish on lands and grooves.
+
+──────────────────────────────────────
+8. CARBON FOULING
+──────────────────────────────────────
+Definition: Black or dark gray residue deposits from propellant combustion.
+
+END-ON VIEW: Dark gray or black deposit layer visible on the muzzle face, bore opening, or inner bore wall.
+SIDE VIEW: Dark deposits coating bore walls, particularly near the chamber end.
+
+──────────────────────────────────────
+9. RIFLING WEAR
+──────────────────────────────────────
+Definition: Rounded, smoothed, or diminished rifling lands and grooves.
+
+END-ON VIEW: Rifling spiral appears faint, indistinct, or lands look rounded rather than sharp when viewed end-on.
+SIDE VIEW: Lands appear flat-topped, grooves appear shallow or smoothed.
+
+──────────────────────────────────────
+10. SPOT
+──────────────────────────────────────
+Definition: Single well-defined circular or oval mark (1–10mm, clear boundary).
+
+END-ON VIEW: Single isolated circular mark on the muzzle face or bore surface.
+SIDE VIEW: Single well-defined circular mark on the bore wall.
+
+──────────────────────────────────────
+11. CUTS
+──────────────────────────────────────
+Definition: Sharp, clean-edged incisions penetrating into the metal substrate.
+
+END-ON VIEW: Sharp straight lines or notches visible on the muzzle face or bore edge — distinct from cracks by their clean, deliberate appearance.
+SIDE VIEW: Clean incisions cutting across the bore surface perpendicular to bore axis.
+
+──────────────────────────────────────
+12. RINGED BARREL
+──────────────────────────────────────
+Definition: A circular internal swelling forming a complete or partial ring around the bore circumference.
+
+⚠ END-ON VIEW — CRITICAL DETECTION RULE:
+A ringed barrel is MOST VISIBLE in end-on view. Look for:
+  - A complete or partial dark ring or band encircling the inside of the bore
+  - A concentric ring INSIDE the main bore circle (ring-within-a-ring)
+  - A shadow band forming a circular arc inside the bore at any depth
+  - Any tonal or geometric discontinuity forming a circular pattern inside the bore
+If ANY circular ring or band is visible inside the bore → MUST report as Ringed Barrel.
+When Ringed Barrel is detected in end-on view, ALSO report as Bulge.
+
+SIDE VIEW: Appears as a circumferential ring or ridge running around the inner bore wall.
+
+──────────────────────────────────────
+13. DENT
+──────────────────────────────────────
+Definition: Localized inward deformation of the barrel wall.
+
+END-ON VIEW: Bore outline appears non-circular with a flat or concave section. Shadow on one side of the bore.
+SIDE VIEW: Visible inward depression on the outer or inner barrel surface.
+
+──────────────────────────────────────
+14. SCRATCH / SCORING
+──────────────────────────────────────
+Definition: Linear grooves parallel to the bore axis.
+
+END-ON VIEW: Fine radial or linear marks visible on the muzzle face or inner bore wall.
+SIDE VIEW: Parallel grooves running lengthwise along the bore walls.
+
+──────────────────────────────────────
+15. CHROME LINING DAMAGE
+──────────────────────────────────────
+Definition: Peeling, cracking, flaking, or uneven chrome lining.
+
+END-ON VIEW: Patchy, irregular reflective surface on the bore interior — alternating bright and dull areas indicating chrome loss.
+SIDE VIEW: Irregular chrome patches, bright spots surrounded by dull areas.
 
 ════════════════════════════════════════
 SEVERITY CLASSIFICATION RULES
@@ -96,7 +230,7 @@ PITTING:
 BULGE:
 - Low: slight wall irregularity, minor asymmetry, <0.5cm
 - Medium: noticeable deformation, 0.5-2cm
-- High: severe deformation >2cm, unsafe for operation
+- High: severe deformation >2cm, or any visible ring/band in end-on view indicating structural deformation unsafe for operation
 
 CORROSION:
 - Low: minor brown/rust discoloration, <10% surface
@@ -144,9 +278,9 @@ CUTS:
 - High: deep cut >10mm, multiple deep cuts, structural impact
 
 RINGED BARREL:
-- Low: minor ring deformation
-- Medium: moderate ring with visible distortion
-- High: severe ring compromising integrity
+- Low: faint ring visible, minor tonal discontinuity inside bore
+- Medium: clear ring or band visible inside bore with noticeable distortion
+- High: prominent ring or band clearly visible in end-on view — indicates structural failure, unsafe for use
 
 DENT:
 - Low: minor inward deformation, <1mm depth
@@ -205,44 +339,46 @@ FIELD DEFINITIONS FOR EACH ISSUE
 - rootCause: Most likely cause (e.g., "moisture exposure", "firing stress", "improper cleaning")
 - solution: 1 sentence fix or remediation
 - maintenanceAction: "Inspect", "Clean", "Repair", or "Replace"
-- riskLevel: "Low", "Medium", or "High" - potential safety/operational risk
+- riskLevel: "Low", "Medium", or "High"
 - affectedArea: Estimated percentage (e.g., "<5%", "10-20%", ">40%")
 - location: "top-left", "top-right", "center", "bottom-left", "bottom-right"
 
 ════════════════════════════════════════
 ANALYSIS PROCESS (FOLLOW STRICTLY)
 ════════════════════════════════════════
-STEP 1: Scan entire image systematically (top to bottom, left to right)
-STEP 2: Check ALL color variations:
-   - Brown/rust ANYWHERE -> MUST report Corrosion
-   - Black/dark gray -> Carbon Fouling
-   - Localized dark spots -> Surface Spots or Spot
-STEP 3: Check ALL surface texture anomalies:
-   - Holes/craters -> Pitting
-   - Linear grooves -> Scratch/Scoring
-   - Rough areas -> Erosion
-   - Fractures -> Cracks
-   - Sharp incisions -> Cuts
-STEP 4: Check ALL geometric distortions:
-   - Outward swelling -> Bulge
-   - Ring-like internal swelling -> Ringed Barrel
-   - Inward deformation -> Dent
-STEP 5: Check coating integrity:
-   - Missing/patching coating -> Flecking Off
-   - Chrome peeling -> Chrome Lining Damage
-STEP 6: Check rifling definition:
-   - Worn/diminished lands/grooves -> Rifling Wear
-STEP 7: For EACH defect found, create a complete issue object
-STEP 8: If NO defects found, return empty issues array
+STEP 1: Identify image view type (END-ON or SIDE view)
+STEP 2: Scan entire image systematically (top to bottom, left to right)
+STEP 3: CHECK BORE GEOMETRY FIRST (for end-on view):
+   - Is there a ring, band, or circular anomaly INSIDE the bore? → Bulge + Ringed Barrel
+   - Is the bore circle irregular, asymmetric, or non-circular? → Bulge or Dent
+STEP 4: Check ALL color variations:
+   - Brown/rust ANYWHERE → MUST report Corrosion
+   - Black/dark gray → Carbon Fouling
+   - Localized dark spots → Surface Spots or Spot
+STEP 5: Check ALL surface texture anomalies:
+   - Holes/craters → Pitting
+   - Linear grooves → Scratch/Scoring
+   - Rough areas → Erosion
+   - Fractures/lines → Cracks
+   - Sharp incisions → Cuts
+STEP 6: Check coating integrity:
+   - Missing/patchy coating → Flecking Off
+   - Irregular chrome → Chrome Lining Damage
+STEP 7: Check rifling definition:
+   - Worn/indistinct rifling → Rifling Wear
+STEP 8: For EACH defect found, create a complete issue object
+STEP 9: If NO defects found, return empty issues array
 
 ════════════════════════════════════════
 CRITICAL REMINDERS
 ════════════════════════════════════════
-- Brown/rust coloring ALWAYS equals Corrosion - never confuse with lighting
+- In END-ON view, a bulge/ringed barrel appears as a RING INSIDE THE BORE — not as swelling
+- Brown/rust coloring ALWAYS equals Corrosion — never confuse with lighting
 - Missing a defect is more dangerous than over-reporting
-- Multiple defect types can exist in one image - report ALL
+- Multiple defect types can exist in one image — report ALL
 - Each issue must have ALL fields populated (no nulls or empty strings)
-- Confidence must be realistic - do not inflate
+- Confidence must be realistic — do not inflate
+- Cracks visible as lines in end-on view MUST be reported
 
 ════════════════════════════════════════
 OUTPUT FORMAT (STRICT JSON - NO MARKDOWN)
