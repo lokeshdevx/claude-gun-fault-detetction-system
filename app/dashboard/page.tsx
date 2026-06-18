@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSessionStore } from "@/lib/store/sessionStore";
 import { DashboardNav } from "@/components/layout/DashboardNav";
@@ -12,29 +12,45 @@ export default function DashboardPage() {
   const { registration, sessionId } = useSessionStore();
   const router = useRouter();
 
+  // Prevent a flash of dashboard content for unauthenticated users while the
+  // redirect effect is pending.
+  const [checking, setChecking] = useState(true);
+
   useEffect(() => {
     if (!registration || !sessionId) {
       router.replace("/");
+    } else {
+      setChecking(false);
     }
   }, [registration, sessionId, router]);
 
-  if (!registration) return null;
+  if (checking || !registration) return null;
+
+  // Derive caliber display value once — avoids repeating the ternary in JSX.
+  const caliberDisplay =
+    registration.caliber === "Other"
+      ? registration.customCaliber
+      : registration.caliber;
+
+  const sessionFields = [
+    { label: "Gun",      value: registration.gunName },
+    { label: "Batch",    value: registration.batchNumber },
+    { label: "Serial",   value: registration.barrelSerialNumber },
+    { label: "Caliber",  value: caliberDisplay },
+    { label: "Inspector",value: registration.inspectorName },
+  ];
 
   return (
     <div className="min-h-screen bg-[#0d1117] flex flex-col">
       <DashboardNav />
 
-      {/* Session info bar - responsive */}
+      {/* Session info bar */}
       <div className="bg-[#0a0f14] border-b border-[#1e2d3d] px-3 sm:px-4 py-2 flex flex-wrap items-center gap-2 sm:gap-4">
-        {[
-          { label: "Gun", value: registration.gunName },
-          { label: "Batch", value: registration.batchNumber },
-          { label: "Serial", value: registration.barrelSerialNumber },
-          { label: "Caliber", value: registration.caliber === "Other" ? registration.customCaliber : registration.caliber },
-          { label: "Inspector", value: registration.inspectorName },
-        ].map(({ label, value }) => (
+        {sessionFields.map(({ label, value }) => (
           <div key={label} className="flex items-center gap-1.5">
-            <span className="text-[10px] sm:text-xs text-gray-600 uppercase tracking-wider">{label}:</span>
+            <span className="text-[10px] sm:text-xs text-gray-600 uppercase tracking-wider">
+              {label}:
+            </span>
             <span className="text-[10px] sm:text-xs font-semibold text-[#8fa84d] truncate max-w-[100px] sm:max-w-none">
               {value}
             </span>
@@ -42,149 +58,105 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Main responsive layout */}
+      {/*
+        ─── LAYOUT STRATEGY ──────────────────────────────────────────────────────
+        The original code rendered CameraPanel, AnalysisControls, and ImageGrid
+        THREE times — once per breakpoint block. This caused:
+          • Three simultaneous camera streams fighting over the same hardware.
+          • ImageGrid mounted three times, creating triple store subscriptions
+            and conflicting state updates — the primary reason images didn't load.
+
+        FIX: each component is rendered exactly ONCE. Layout is handled entirely
+        with responsive CSS classes on the shared wrapper elements so the DOM
+        tree adapts without duplicating any component instances.
+
+        Breakpoint map:
+          Mobile  (<md)  → single column, stacked vertically
+          Tablet  (md)   → 2-column grid: [Camera + Controls] | [ImageGrid]
+          Desktop (lg+)  → 3-column flex: 50% Camera | 20% Controls | 30% ImageGrid
+      ─────────────────────────────────────────────────────────────────────────── */}
       <div className="flex-1 p-3 sm:p-4 min-h-0">
-        {/* Mobile: Stack vertically, Tablet/Desktop: Grid layout */}
-        <div className="block lg:hidden space-y-4">
-          {/* Camera Section - Full width on mobile */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1.5 h-4 bg-[#65783c] rounded-full" />
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Camera</h2>
-            </div>
-            <CameraPanel />
-          </motion.div>
 
-          {/* Controls Section - Full width on mobile */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1.5 h-4 bg-blue-500 rounded-full" />
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Controls</h2>
-            </div>
-            <AnalysisControls />
-          </motion.div>
+        {/*
+          Outer container switches layout mode per breakpoint.
+          flex-col  → mobile stack
+          md:grid   → 2-column tablet grid
+          lg:flex lg:flex-row → 3-column desktop flex
+        */}
+        <div className="flex flex-col gap-4 md:grid md:grid-cols-2 lg:flex lg:flex-row lg:gap-4 min-h-0">
 
-          {/* Images Section - Full width on mobile */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4 flex flex-col min-h-[400px]"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1.5 h-4 bg-orange-500 rounded-full" />
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Images & Results</h2>
-            </div>
-            <div className="flex-1">
-              <ImageGrid />
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Tablet Layout (md: 2 columns) */}
-        <div className="hidden lg:hidden md:block">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Left Column */}
-            <div className="space-y-4">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4"
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1.5 h-4 bg-[#65783c] rounded-full" />
-                  <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Camera</h2>
-                </div>
-                <CameraPanel />
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4"
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1.5 h-4 bg-blue-500 rounded-full" />
-                  <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Controls</h2>
-                </div>
-                <AnalysisControls />
-              </motion.div>
-            </div>
-
-            {/* Right Column */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4 flex flex-col h-full"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1.5 h-4 bg-orange-500 rounded-full" />
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Images & Results</h2>
-              </div>
-              <div className="flex-1 min-h-[500px]">
-                <ImageGrid />
-              </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Desktop Layout (lg: 3 columns with percentages) */}
-        <div className="hidden lg:flex gap-4 min-h-0">
-          {/* Left — Camera (50%) */}
+          {/* ── Camera panel ──────────────────────────────────────────────────
+              Mobile/tablet: full width (col-span-1).
+              Desktop: 50% of the row.
+          ──────────────────────────────────────────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="w-[50%] bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4 overflow-y-auto"
+            className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4
+                       md:col-span-1 lg:w-[50%] lg:overflow-y-auto"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1.5 h-4 bg-[#65783c] rounded-full" />
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Camera</h2>
-            </div>
+            <SectionHeader color="bg-[#65783c]" title="Camera" />
             <CameraPanel />
           </motion.div>
 
-          {/* Center — Controls (20%) */}
+          {/* ── Controls panel ────────────────────────────────────────────────
+              Mobile: sits between Camera and ImageGrid (natural stack order).
+              Tablet: shares left column with Camera — achieved by wrapping
+                      Camera + Controls in a sub-grid column on md.
+              Desktop: 20% centre column.
+
+              We handle the tablet "left column" stacking by placing Controls
+              right after Camera in source order and using md:col-start-1 so
+              it flows into the first column on a 2-col grid automatically.
+              ImageGrid uses md:col-start-2 md:row-span-2 to fill the right.
+          ──────────────────────────────────────────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="w-[20%] bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4 overflow-y-auto"
+            className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4
+                       md:col-start-1 lg:w-[20%] lg:overflow-y-auto"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1.5 h-4 bg-blue-500 rounded-full" />
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Controls</h2>
-            </div>
+            <SectionHeader color="bg-blue-500" title="Controls" />
             <AnalysisControls />
           </motion.div>
 
-          {/* Right — Images & Results (30%) */}
+          {/* ── ImageGrid panel ───────────────────────────────────────────────
+              Mobile: full width, below Controls.
+              Tablet: right column, spans both rows so it fills the full height
+                      alongside Camera (row 1) and Controls (row 2).
+              Desktop: 30% right column with overflow scrolling inside.
+          ──────────────────────────────────────────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="w-[30%] bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4 flex flex-col min-h-[400px] overflow-hidden"
+            className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4
+                       flex flex-col min-h-[400px]
+                       md:col-start-2 md:row-start-1 md:row-span-2
+                       lg:w-[30%] lg:overflow-hidden"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1.5 h-4 bg-orange-500 rounded-full" />
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Images & Results</h2>
-            </div>
+            <SectionHeader color="bg-orange-500" title="Images & Results" />
             <div className="flex-1 overflow-hidden">
               <ImageGrid />
             </div>
           </motion.div>
+
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Small presentational helper ─────────────────────────────────────────────
+// Extracted to avoid repeating the same markup three times.
+function SectionHeader({ color, title }: { color: string; title: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <div className={`w-1.5 h-4 ${color} rounded-full`} />
+      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+        {title}
+      </h2>
     </div>
   );
 }

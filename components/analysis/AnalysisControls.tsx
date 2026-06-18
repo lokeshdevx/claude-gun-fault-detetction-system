@@ -1,5 +1,6 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import {
   Scan, FileText, Save, Trash2, Activity, Shield, AlertTriangle,
 } from "lucide-react";
@@ -11,6 +12,43 @@ import { HealthScore } from "@/components/ui/HealthScore";
 import { useToast } from "@/components/ui/ToastProvider";
 import type { Inspection } from "@/lib/types";
 
+// ─── Elapsed-time hook ────────────────────────────────────────────────────────
+
+/**
+ * Returns the number of seconds elapsed since the timer was started.
+ * Starts counting when `running` is true, resets to 0 when it becomes false.
+ */
+function useElapsedSeconds(running: boolean): number {
+  const [elapsed, setElapsed] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (running) {
+      setElapsed(0);
+      intervalRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      setElapsed(0);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [running]);
+
+  return elapsed;
+}
+
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function AnalysisControls() {
   const {
     images, sessionId, registration,
@@ -18,6 +56,10 @@ export function AnalysisControls() {
     setAnalyzing, setAnalysisProgress, clearSession, updateImage: updateStoreImage,
   } = useSessionStore();
   const { toast } = useToast();
+
+  // Track which image number is currently being analyzed (1-based).
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const elapsed = useElapsedSeconds(isAnalyzing);
 
   const pendingImages = images.filter((i) => i.status === "pending");
   const completedImages = images.filter((i) => i.status === "completed");
@@ -32,6 +74,7 @@ export function AnalysisControls() {
     if (!pendingImages.length || !sessionId) return;
     setAnalyzing(true);
     setAnalysisProgress(0);
+    setCurrentImageIndex(0);
 
     const toAnalyze = pendingImages;
     for (const img of toAnalyze) {
@@ -41,7 +84,10 @@ export function AnalysisControls() {
     try {
       for (let i = 0; i < toAnalyze.length; i++) {
         const img = toAnalyze[i];
+        setCurrentImageIndex(i + 1);
+        // Progress reflects images completed so far (not the current one).
         setAnalysisProgress(Math.round((i / toAnalyze.length) * 100));
+
         try {
           const result = await (
             await import("@/lib/services/claudeService")
@@ -58,6 +104,7 @@ export function AnalysisControls() {
       toast(`${toAnalyze.length} image(s) analyzed`, "success");
     } finally {
       setAnalyzing(false);
+      setCurrentImageIndex(0);
     }
   };
 
@@ -150,13 +197,31 @@ export function AnalysisControls() {
           </div>
         )}
 
-        {/* Analysis progress */}
+        {/* Analysis progress — shown while isAnalyzing */}
         {isAnalyzing && (
           <div className="bg-[#1a2230] rounded-xl p-3 border border-[#65783c]/30">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-[#8fa84d] font-semibold">Analyzing with Claude AI</span>
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-[#8fa84d] font-semibold">
+                Analyzing with Claude AI
+              </span>
               <span className="text-xs text-gray-400">{analysisProgress}%</span>
             </div>
+
+            {/* Sub-label: which image + elapsed time */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-500">
+                Image {currentImageIndex} of {pendingImages.length + completedImages.length > 0
+                  ? images.filter((i) => i.status !== "pending" || pendingImages.includes(i)).length
+                  : currentImageIndex}
+                {" "}— deep inspection in progress…
+              </span>
+              <span className="text-xs text-gray-500 tabular-nums">
+                {formatElapsed(elapsed)}
+              </span>
+            </div>
+
+            {/* Progress bar */}
             <div className="h-1.5 bg-[#0d1117] rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-[#65783c] rounded-full"
@@ -165,6 +230,17 @@ export function AnalysisControls() {
                 transition={{ duration: 0.3 }}
               />
             </div>
+
+            {/* Patience note — appears after 15 seconds on a single image */}
+            {elapsed >= 15 && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-2 text-xs text-gray-600 text-center"
+              >
+                Detailed barrel inspection can take up to 5 minutes — please wait.
+              </motion.p>
+            )}
           </div>
         )}
 
@@ -180,7 +256,9 @@ export function AnalysisControls() {
             ) : (
               <Scan className="w-4 h-4" />
             )}
-            {isAnalyzing ? "Analyzing..." : `Analyze ${pendingImages.length} Image${pendingImages.length !== 1 ? "s" : ""}`}
+            {isAnalyzing
+              ? `Analyzing image ${currentImageIndex}…`
+              : `Analyze ${pendingImages.length} Image${pendingImages.length !== 1 ? "s" : ""}`}
           </button>
 
           <button

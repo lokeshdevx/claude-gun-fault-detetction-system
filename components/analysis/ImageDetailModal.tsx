@@ -11,12 +11,23 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * The API returns confidence as a float 0–1 (e.g. 0.85).
+ * Multiply by 100 and round to display as a percentage integer.
+ */
+function formatConfidence(confidence: number | undefined): string {
+  if (confidence === undefined || confidence === null) return "0%";
+  // Guard: if someone passes an already-scaled value (>1) don't double-scale.
+  const pct = confidence <= 1 ? Math.round(confidence * 100) : Math.round(confidence);
+  return `${pct}%`;
+}
+
 export function ImageDetailModal({ image, onClose }: Props) {
   const [zoom, setZoom] = useState(1);
   const [imageError, setImageError] = useState(false);
 
   if (!image) return null;
-  
+
   const ar = image.analysisResult;
   const issues = ar?.issues || [];
 
@@ -75,15 +86,15 @@ export function ImageDetailModal({ image, onClose }: Props) {
                         src={image.dataUrl}
                         alt="Barrel inspection"
                         className="w-full object-contain"
-                        style={{ 
-                          transform: `scale(${zoom})`, 
-                          transformOrigin: "top left", 
-                          transition: "transform 0.2s" 
+                        style={{
+                          transform: `scale(${zoom})`,
+                          transformOrigin: "top left",
+                          transition: "transform 0.2s",
                         }}
                         onError={() => setImageError(true)}
                       />
                     ) : (
-                      <div className="flex items-center justify-center h-64 text-gray-500">
+                      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                         <AlertTriangle className="w-8 h-8 mb-2" />
                         <p className="text-sm">Failed to load image</p>
                       </div>
@@ -158,7 +169,8 @@ export function ImageDetailModal({ image, onClose }: Props) {
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs text-gray-400 mb-2">
                             <span>
-                              Confidence: <span className="text-white">{issue.confidence || 0}%</span>
+                              {/* confidence is 0–1 from the API; convert to % for display */}
+                              Confidence: <span className="text-white">{formatConfidence(issue.confidence)}</span>
                             </span>
                             <span>
                               Area: <span className="text-white">{issue.affectedArea || "Unknown"}</span>
