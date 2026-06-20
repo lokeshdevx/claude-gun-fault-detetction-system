@@ -101,7 +101,12 @@ export function ImageDetailModal({ image, onClose }: Props) {
   const ar = image.analysisResult;
   const rawIssues = ar?.issues ?? [];
   const issues = filterAllowedIssues(rawIssues);
-  const criticalIssues = issues.filter((i) => i.severity === "High").length;
+  
+  // ✅ FIX: Use lowercase comparison for severity
+  const criticalIssues = issues.filter((i) => {
+    const severity = i.severity?.toLowerCase();
+    return severity === "high" || severity === "critical";
+  }).length;
 
   // ─── HANDLERS ──────────────────────────────────────────────────────────────
   
