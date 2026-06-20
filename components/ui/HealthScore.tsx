@@ -30,7 +30,7 @@ export function HealthScore({ score, size = "md" }: Props) {
             cy={s.ring / 2}
             r={r}
             fill="none"
-            stroke="#1f2937"
+            stroke="#e5e7eb"
             strokeWidth={s.stroke}
           />
           <circle

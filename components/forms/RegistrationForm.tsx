@@ -52,11 +52,11 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center gap-2 mb-3">
-      <Icon className="w-3.5 h-3.5 text-[#65783c] flex-shrink-0" />
+      <Icon className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
       <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.1em]">
         {label}
       </span>
-      <div className="flex-1 h-px bg-[#1e2d3d]" />
+      <div className="flex-1 h-px bg-gray-200" />
     </div>
   );
 }
@@ -70,7 +70,7 @@ function FieldError({ message }: { message?: string }) {
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            className="flex items-center gap-1 text-[11px] text-red-400"
+            className="flex items-center gap-1 text-[11px] text-red-600"
           >
             <AlertCircle className="w-3 h-3 flex-shrink-0" />
             {message}
@@ -120,9 +120,9 @@ export function RegistrationForm() {
   };
 
   const inputClass =
-    "w-full bg-[#131b26] border border-[#1e2d3d] rounded-lg px-3 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[#65783c]/60 focus:ring-1 focus:ring-[#65783c]/20 transition-all duration-150";
+    "w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200 transition-all duration-150";
   const labelClass =
-    "block text-[11px] font-semibold text-gray-500 uppercase tracking-[0.07em] mb-1.5";
+    "block text-[11px] font-semibold text-gray-600 uppercase tracking-[0.07em] mb-1.5";
 
   return (
     <motion.div
@@ -132,12 +132,12 @@ export function RegistrationForm() {
       className="w-full max-w-2xl mx-auto"
     >
       {/* ── Header ───────────────────────────────────── */}
-      <div className="flex items-center gap-4 mb-8 pb-6 border-b border-[#1e2d3d]">
-        <div className="w-11 h-11 rounded-xl bg-[#65783c]/10 border border-[#65783c]/20 flex items-center justify-center flex-shrink-0">
-          <Target className="w-5 h-5 text-[#8fa84d]" />
+      <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-200">
+        <div className="w-11 h-11 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+          <Target className="w-5 h-5 text-gray-700" />
         </div>
         <div>
-          <h1 className="text-base font-semibold text-white leading-snug">
+          <h1 className="text-base font-semibold text-gray-900 leading-snug">
             Inspection manifest
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -153,7 +153,7 @@ export function RegistrationForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>
-                Gun name <span className="text-red-500">*</span>
+                Gun name <span className="text-red-600">*</span>
               </label>
               <input
                 {...register("gunName")}
@@ -164,7 +164,7 @@ export function RegistrationForm() {
             </div>
             <div>
               <label className={labelClass}>
-                Batch number <span className="text-red-500">*</span>
+                Batch number <span className="text-red-600">*</span>
               </label>
               <input
                 {...register("batchNumber")}
@@ -177,7 +177,7 @@ export function RegistrationForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>
-                Barrel serial number <span className="text-red-500">*</span>
+                Barrel serial number <span className="text-red-600">*</span>
               </label>
               <input
                 {...register("barrelSerialNumber")}
@@ -200,8 +200,8 @@ export function RegistrationForm() {
                 onClick={() => setValue("caliber", cal, { shouldValidate: true })}
                 className={`py-2 px-1 rounded-lg text-xs font-semibold border transition-all duration-150 ${
                   caliber === cal
-                    ? "bg-[#65783c]/15 border-[#65783c]/50 text-[#8fa84d]"
-                    : "bg-[#131b26] border-[#1e2d3d] text-gray-500 hover:border-[#2d3d4f] hover:text-gray-300"
+                    ? "bg-gray-200 border-gray-400 text-gray-900"
+                    : "bg-white border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700"
                 }`}
               >
                 {CALIBER_LABELS[cal]}
@@ -217,7 +217,7 @@ export function RegistrationForm() {
                 style={{ overflow: "hidden" }}
               >
                 <label className={labelClass}>
-                  Specify caliber <span className="text-red-500">*</span>
+                  Specify caliber <span className="text-red-600">*</span>
                 </label>
                 <input
                   {...register("customCaliber")}
@@ -235,7 +235,7 @@ export function RegistrationForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>
-                Inspector name <span className="text-red-500">*</span>
+                Inspector name <span className="text-red-600">*</span>
               </label>
               <input
                 {...register("inspectorName")}
@@ -269,9 +269,9 @@ export function RegistrationForm() {
             {QUALITY_HINTS.map((hint) => (
               <span
                 key={hint}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#131b26] border border-[#1e2d3d] text-[10px] text-gray-500"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 border border-gray-200 text-[10px] text-gray-600"
               >
-                <CheckCircle2 className="w-2.5 h-2.5 text-[#65783c]" />
+                <CheckCircle2 className="w-2.5 h-2.5 text-gray-600" />
                 {hint}
               </span>
             ))}
@@ -279,12 +279,12 @@ export function RegistrationForm() {
         </section>
 
         {/* ── Date bar ─────────────────────────────── */}
-        <div className="bg-[#131b26] border border-[#1e2d3d] rounded-lg px-4 py-3 flex items-center justify-between">
-          <span className="flex items-center gap-2 text-[10px] font-semibold text-gray-600 uppercase tracking-[0.08em]">
+        <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <span className="flex items-center gap-2 text-[10px] font-semibold text-gray-500 uppercase tracking-[0.08em]">
             <CalendarClock className="w-3.5 h-3.5" />
             Inspection date
           </span>
-          <span className="text-xs font-medium text-[#8fa84d] font-mono">
+          <span className="text-xs font-medium text-gray-700 font-mono">
             {new Date().toLocaleString("en-US", {
               month: "short",
               day: "numeric",
@@ -299,10 +299,10 @@ export function RegistrationForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#65783c]/15 border border-[#65783c]/40 text-[#8fa84d] text-sm font-semibold hover:bg-[#65783c]/25 hover:border-[#65783c]/60 disabled:opacity-40 transition-all duration-200"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm font-semibold hover:bg-gray-700 hover:border-gray-600 disabled:opacity-40 transition-all duration-200"
         >
           {loading ? (
-            <div className="w-4 h-4 border-2 border-[#8fa84d]/30 border-t-[#8fa84d] rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <ArrowRight className="w-4 h-4" />
           )}

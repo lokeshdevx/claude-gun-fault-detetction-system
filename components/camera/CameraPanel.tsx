@@ -270,7 +270,7 @@ export function CameraPanel() {
   return (
     <div className="flex flex-col gap-3 h-full">
       {/* Video feed */}
-      <div className="relative bg-[#0d1117] rounded-xl overflow-hidden border border-[#1e2d3d] aspect-video">
+      <div className="relative bg-gray-100 rounded-xl overflow-hidden border border-gray-200 aspect-video">
         <video
           ref={videoRef}
           autoPlay
@@ -281,7 +281,7 @@ export function CameraPanel() {
 
         {!isCameraOn && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-[#1a2230] border border-[#2d3d4f] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center">
               <CameraOff className="w-5 h-5 text-gray-500" />
             </div>
             <p className="text-xs text-gray-500">Camera inactive</p>
@@ -296,7 +296,7 @@ export function CameraPanel() {
                 <div
                   key={corner}
                   className={[
-                    "absolute w-5 h-5 border-[#65783c] border-2",
+                    "absolute w-5 h-5 border-gray-600 border-2",
                     corner.includes("top") ? "top-2" : "bottom-2",
                     corner.includes("left") ? "left-2" : "right-2",
                     corner === "top-left"
@@ -325,7 +325,7 @@ export function CameraPanel() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-white/20"
+            className="absolute inset-0 bg-white/40"
           />
         )}
       </div>
@@ -334,10 +334,10 @@ export function CameraPanel() {
       <div className="relative">
         <button
           onClick={() => setShowDevices((prev) => !prev)}
-          className="w-full flex items-center justify-between gap-2 bg-[#1a2230] border border-[#2d3d4f] rounded-lg px-3 py-2 text-xs text-gray-300 hover:border-[#65783c]/50 transition-all"
+          className="w-full flex items-center justify-between gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-700 hover:border-gray-500 transition-all shadow-sm"
         >
           <span className="flex items-center gap-2">
-            <Usb className="w-3.5 h-3.5 text-[#8fa84d]" />
+            <Usb className="w-3.5 h-3.5 text-gray-600" />
             <span className="truncate max-w-[160px]">{selectedLabel}</span>
           </span>
           <ChevronDown
@@ -351,15 +351,15 @@ export function CameraPanel() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="absolute z-20 w-full mt-1 bg-[#1a2230] border border-[#2d3d4f] rounded-lg overflow-hidden shadow-xl"
+              className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg overflow-hidden shadow-lg"
             >
               {/* FIX: use enumerated index instead of O(n) indexOf */}
               {devices.map((d, index) => (
                 <button
                   key={d.deviceId}
                   onClick={() => switchCamera(d.deviceId)}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-[#22304a] transition-colors ${
-                    d.deviceId === selectedDevice ? "text-[#8fa84d]" : "text-gray-300"
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors ${
+                    d.deviceId === selectedDevice ? "text-gray-900 font-semibold" : "text-gray-700"
                   }`}
                 >
                   {d.label !== "" ? d.label : `Camera ${index + 1}`}
@@ -371,7 +371,7 @@ export function CameraPanel() {
                   refreshDevices();
                   setShowDevices(false);
                 }}
-                className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:bg-[#22304a] border-t border-[#2d3d4f] flex items-center gap-2"
+                className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:bg-gray-50 border-t border-gray-200 flex items-center gap-2"
               >
                 <RefreshCw className="w-3 h-3" /> Refresh camera list
               </button>
@@ -386,8 +386,8 @@ export function CameraPanel() {
           onClick={() => (isCameraOn ? stopCamera() : startCamera(selectedDevice || undefined))}
           className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             isCameraOn
-              ? "bg-red-900/40 text-red-400 border border-red-900/50 hover:bg-red-900/60"
-              : "bg-[#65783c] text-white hover:bg-[#7a8f4a]"
+              ? "bg-red-100 text-red-700 border border-red-300 hover:bg-red-200"
+              : "bg-gray-800 text-white hover:bg-gray-700"
           }`}
         >
           {isCameraOn ? (
@@ -401,10 +401,10 @@ export function CameraPanel() {
         <button
           onClick={captureImage}
           disabled={!isCameraOn || capturing}
-          className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold bg-[#1a2230] border border-[#2d3d4f] text-gray-300 hover:border-[#65783c]/50 hover:text-white disabled:opacity-40 transition-all"
+          className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold bg-white border border-gray-300 text-gray-700 hover:border-gray-500 hover:bg-gray-50 disabled:opacity-40 transition-all shadow-sm"
         >
           {capturing ? (
-            <div className="w-4 h-4 border-2 border-gray-400 border-t-white rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin" />
           ) : (
             <ZoomIn className="w-4 h-4" />
           )}
@@ -412,7 +412,7 @@ export function CameraPanel() {
         </button>
       </div>
 
-      <label className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold bg-[#1a2230] border border-dashed border-[#2d3d4f] text-gray-400 hover:border-[#65783c]/60 hover:text-white cursor-pointer transition-all">
+      <label className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold bg-white border border-dashed border-gray-300 text-gray-500 hover:border-gray-500 hover:text-gray-700 cursor-pointer transition-all shadow-sm">
         <Upload className="w-4 h-4" />
         Upload Images
         <input
@@ -425,7 +425,7 @@ export function CameraPanel() {
         />
       </label>
 
-      <p className="text-xs text-gray-600 text-center">JPG · PNG · WEBP · Max 20 MB</p>
+      <p className="text-xs text-gray-400 text-center">JPG · PNG · WEBP · Max 20 MB</p>
     </div>
   );
 }

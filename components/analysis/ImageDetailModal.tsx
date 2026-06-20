@@ -75,7 +75,7 @@ export function ImageDetailModal({ image, onClose }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={onClose}
       >
         <motion.div
@@ -83,15 +83,15 @@ export function ImageDetailModal({ image, onClose }: Props) {
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto"
+          className="bg-white border border-gray-200 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl"
         >
           {/* Header */}
-          <div className="sticky top-0 bg-[#0d1117] z-20 flex items-center justify-between p-4 border-b border-[#1e2d3d]">
+          <div className="sticky top-0 bg-white z-20 flex items-center justify-between p-4 border-b border-gray-200">
             <div>
-              <h2 className="text-sm font-bold text-white">
+              <h2 className="text-sm font-bold text-gray-900">
                 {image.position || image.fileName || "Untitled Image"}
               </h2>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-500">
                 {image.capturedAt
                   ? new Date(image.capturedAt).toLocaleString()
                   : "Unknown date"}
@@ -103,7 +103,7 @@ export function ImageDetailModal({ image, onClose }: Props) {
               )}
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg bg-[#1a2230] hover:bg-[#22304a] text-gray-400 transition-colors"
+                className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -113,7 +113,7 @@ export function ImageDetailModal({ image, onClose }: Props) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
             {/* Left — Image */}
             <div>
-              <div className="relative bg-[#0a0f15] rounded-xl overflow-hidden border border-[#1e2d3d]">
+              <div className="relative bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
                 <div className="overflow-auto" style={{ maxHeight: "380px" }}>
                   <div className="relative inline-block w-full min-h-[200px]">
                     {!imageError ? (
@@ -130,7 +130,7 @@ export function ImageDetailModal({ image, onClose }: Props) {
                         onError={() => setImageError(true)}
                       />
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                      <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                         <AlertTriangle className="w-8 h-8 mb-2" />
                         <p className="text-sm">Failed to load image</p>
                       </div>
@@ -141,21 +141,21 @@ export function ImageDetailModal({ image, onClose }: Props) {
                 <div className="absolute bottom-2 right-2 flex gap-1">
                   <button
                     onClick={handleZoomIn}
-                    className="p-1.5 bg-black/60 rounded text-white hover:bg-black/80 transition-colors"
+                    className="p-1.5 bg-white/90 backdrop-blur-sm rounded text-gray-700 hover:bg-white shadow-md transition-colors"
                     aria-label="Zoom in"
                   >
                     <ZoomIn className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={handleZoomOut}
-                    className="p-1.5 bg-black/60 rounded text-white hover:bg-black/80 transition-colors"
+                    className="p-1.5 bg-white/90 backdrop-blur-sm rounded text-gray-700 hover:bg-white shadow-md transition-colors"
                     aria-label="Zoom out"
                   >
                     <ZoomOut className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={handleResetZoom}
-                    className="px-2 py-1.5 bg-black/60 rounded text-white text-xs hover:bg-black/80 transition-colors"
+                    className="px-2 py-1.5 bg-white/90 backdrop-blur-sm rounded text-gray-700 text-xs hover:bg-white shadow-md transition-colors"
                   >
                     Reset
                   </button>
@@ -164,13 +164,13 @@ export function ImageDetailModal({ image, onClose }: Props) {
 
               {/* Quality Issues */}
               {image.qualityIssues && image.qualityIssues.length > 0 && (
-                <div className="mt-3 bg-yellow-950/30 border border-yellow-900/30 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-yellow-400 mb-1">
+                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-amber-800 mb-1">
                     Quality Issues
                   </p>
                   <ul className="list-disc list-inside">
                     {image.qualityIssues.map((q, i) => (
-                      <li key={i} className="text-xs text-yellow-300/70">
+                      <li key={i} className="text-xs text-amber-700">
                         {q}
                       </li>
                     ))}
@@ -183,15 +183,15 @@ export function ImageDetailModal({ image, onClose }: Props) {
             <div className="space-y-3">
               {ar ? (
                 <>
-                  <div className="bg-[#1a2230] rounded-xl p-3 border border-[#2d3d4f]">
-                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">
+                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">
                       Overall Condition
                     </p>
-                    <p className="text-sm text-white">
+                    <p className="text-sm text-gray-900">
                       {ar.overallCondition || "No condition assessment available"}
                     </p>
                     {criticalIssues > 0 && (
-                      <p className="text-xs text-red-400 mt-1">
+                      <p className="text-xs text-red-600 mt-1">
                         {criticalIssues} critical issue{criticalIssues > 1 ? "s" : ""} detected
                       </p>
                     )}
@@ -199,65 +199,65 @@ export function ImageDetailModal({ image, onClose }: Props) {
 
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                     {issues.length === 0 ? (
-                      <div className="flex items-center gap-2 text-green-400 bg-green-950/30 border border-green-900/30 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
                         <CheckCircle className="w-4 h-4 flex-shrink-0" />
-                        <span className="text-sm">No defects detected</span>
+                        <span className="text-sm font-medium">No defects detected</span>
                       </div>
                     ) : (
                       issues.map((issue, i) => (
                         <div
                           key={i}
-                          className="bg-[#1a2230] rounded-lg border border-[#2d3d4f] p-3"
+                          className="bg-gray-50 rounded-lg border border-gray-200 p-3"
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-semibold text-white">
+                            <span className="text-sm font-semibold text-gray-900">
                               {issue.issueName}
                             </span>
                             <SeverityBadge severity={issue.severity || "low"} />
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-xs text-gray-400 mb-2">
+                          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
                             <span>
                               Confidence:{" "}
-                              <span className="text-white">
+                              <span className="text-gray-900 font-medium">
                                 {formatConfidence(issue.confidence)}
                               </span>
                             </span>
                             <span>
                               Area:{" "}
-                              <span className="text-white">
+                              <span className="text-gray-900 font-medium">
                                 {issue.affectedArea || "Unknown"}
                               </span>
                             </span>
                             <span>
                               Risk:{" "}
-                              <span className="text-orange-300">
+                              <span className="text-orange-700 font-medium">
                                 {issue.riskLevel || "Unknown"}
                               </span>
                             </span>
                             <span>
                               Location:{" "}
-                              <span className="text-white capitalize">
+                              <span className="text-gray-900 font-medium capitalize">
                                 {issue.location?.replace(/-/g, " ") || "Center"}
                               </span>
                             </span>
                           </div>
-                          <p className="text-xs text-gray-400 mb-1">
+                          <p className="text-xs text-gray-600 mb-1">
                             {issue.description || "No description available"}
                           </p>
                           {issue.solution && (
-                            <div className="mt-2 pt-2 border-t border-[#2d3d4f]">
-                              <p className="text-xs text-[#8fa84d] font-semibold mb-0.5">
+                            <div className="mt-2 pt-2 border-t border-gray-200">
+                              <p className="text-xs text-gray-700 font-semibold mb-0.5">
                                 Solution
                               </p>
-                              <p className="text-xs text-gray-300">{issue.solution}</p>
+                              <p className="text-xs text-gray-600">{issue.solution}</p>
                             </div>
                           )}
                           {issue.maintenanceAction && (
                             <div className="mt-1.5">
-                              <p className="text-xs text-blue-400 font-semibold mb-0.5">
+                              <p className="text-xs text-blue-600 font-semibold mb-0.5">
                                 Maintenance
                               </p>
-                              <p className="text-xs text-gray-300">
+                              <p className="text-xs text-gray-600">
                                 {issue.maintenanceAction}
                               </p>
                             </div>
@@ -268,10 +268,10 @@ export function ImageDetailModal({ image, onClose }: Props) {
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                <div className="flex flex-col items-center justify-center h-48 text-gray-400">
                   <AlertTriangle className="w-8 h-8 mb-2" />
-                  <p className="text-sm">Not yet analyzed</p>
-                  <p className="text-xs mt-1">
+                  <p className="text-sm text-gray-600">Not yet analyzed</p>
+                  <p className="text-xs mt-1 text-gray-400">
                     Click "Analyze" to process this image
                   </p>
                 </div>

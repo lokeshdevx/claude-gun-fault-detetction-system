@@ -41,17 +41,17 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0d1117] flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardNav />
 
       {/* Session info bar */}
-      <div className="bg-[#0a0f14] border-b border-[#1e2d3d] px-3 sm:px-4 py-2 flex flex-wrap items-center gap-2 sm:gap-4">
+      <div className="bg-white border-b border-gray-200 px-3 sm:px-4 py-2 flex flex-wrap items-center gap-2 sm:gap-4">
         {sessionFields.map(({ label, value }) => (
           <div key={label} className="flex items-center gap-1.5">
-            <span className="text-[10px] sm:text-xs text-gray-600 uppercase tracking-wider">
+            <span className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider">
               {label}:
             </span>
-            <span className="text-[10px] sm:text-xs font-semibold text-[#8fa84d] truncate max-w-[100px] sm:max-w-none">
+            <span className="text-[10px] sm:text-xs font-semibold text-gray-700 truncate max-w-[100px] sm:max-w-none">
               {value}
             </span>
           </div>
@@ -92,10 +92,10 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4
+            className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm
                        md:col-span-1 lg:w-[50%] lg:overflow-y-auto"
           >
-            <SectionHeader color="bg-[#65783c]" title="Camera" />
+            <SectionHeader color="bg-gray-700" title="Camera" />
             <CameraPanel />
           </motion.div>
 
@@ -114,7 +114,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4
+            className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm
                        md:col-start-1 lg:w-[20%] lg:overflow-y-auto"
           >
             <SectionHeader color="bg-blue-500" title="Controls" />
@@ -131,7 +131,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-[#0d1117] border border-[#1e2d3d] rounded-2xl p-4
+            className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm
                        flex flex-col min-h-[400px]
                        md:col-start-2 md:row-start-1 md:row-span-2
                        lg:w-[30%] lg:overflow-hidden"
@@ -154,7 +154,7 @@ function SectionHeader({ color, title }: { color: string; title: string }) {
   return (
     <div className="flex items-center gap-2 mb-4">
       <div className={`w-1.5 h-4 ${color} rounded-full`} />
-      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+      <h2 className="text-xs font-bold text-gray-600 uppercase tracking-widest">
         {title}
       </h2>
     </div>

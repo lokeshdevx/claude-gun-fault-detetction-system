@@ -19,7 +19,11 @@ export function SeverityBadge({ severity, className = "" }: Props) {
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold tracking-wider ${className}`}
-      style={{ color, border: `1px solid ${color}30`, background: `${color}15` }}
+      style={{ 
+        color: color, 
+        border: `1px solid ${color}40`, 
+        background: `${color}10` 
+      }}
     >
       <span
         className="w-1.5 h-1.5 rounded-full inline-block"
