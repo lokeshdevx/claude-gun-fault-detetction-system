@@ -104,7 +104,7 @@ export function ImageDetailModal({ image, onClose }: Props) {
   
   // ✅ FIX: Use lowercase comparison for severity
   const criticalIssues = issues.filter((i) => {
-    const severity = i.severity?.toLowerCase();
+    const severity = i?.severity?.toLowerCase();
     return severity === "high" || severity === "critical";
   }).length;
 

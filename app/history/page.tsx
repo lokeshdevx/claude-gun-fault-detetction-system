@@ -6,7 +6,7 @@ import {
   Search, Trash2, FileText, Crosshair, History, ArrowLeft,
   Calendar, User, Target, ChevronRight, Download, Eye,
   Filter, X, CheckCircle2, AlertCircle, Clock, BarChart3,
-  TrendingUp, TrendingDown
+  TrendingUp, TrendingDown, Grid3x3, List
 } from "lucide-react";
 import { getAllInspections, deleteInspection } from "@/lib/db/database";
 import { generatePDFReport } from "@/lib/services/pdfService";
@@ -20,6 +20,7 @@ export default function HistoryPage() {
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const { toast } = useToast();
 
   const load = async () => {
@@ -75,7 +76,7 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
-      {/* Nav - enhanced */}
+      {/* Nav */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/80 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-1.5 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 shadow-md">
@@ -95,7 +96,7 @@ export default function HistoryPage() {
       </div>
 
       <div className="max-w-6xl mx-auto p-4 sm:p-6">
-        {/* Header - enhanced */}
+        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-200 flex items-center justify-center shadow-sm">
@@ -114,28 +115,51 @@ export default function HistoryPage() {
             </div>
           </div>
           
-          {/* Quick stats */}
-          {inspections.length > 0 && (
-            <div className="flex items-center gap-3 text-xs">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-full shadow-sm">
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                <span className="font-medium text-gray-700">
-                  {inspections.filter(i => i.images.some(img => img.status === "completed")).length}
-                </span>
-                <span className="text-gray-400">completed</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-full shadow-sm">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                <span className="font-medium text-gray-700">
-                  {inspections.filter(i => i.images.some(img => img.status === "pending" || img.status === "processing")).length}
-                </span>
-                <span className="text-gray-400">pending</span>
-              </div>
+          {/* Quick stats and View Toggle */}
+          <div className="flex items-center gap-3">
+            {inspections.length > 0 && (
+              <>
+                <div className="flex items-center gap-3 text-xs">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-full shadow-sm">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                    <span className="font-medium text-gray-700">
+                      {inspections.filter(i => i.images.some(img => img.status === "completed")).length}
+                    </span>
+                    <span className="text-gray-400">completed</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-full shadow-sm">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="font-medium text-gray-700">
+                      {inspections.filter(i => i.images.some(img => img.status === "pending" || img.status === "processing")).length}
+                    </span>
+                    <span className="text-gray-400">pending</span>
+                  </div>
+                </div>
+                <div className="w-px h-8 bg-gray-200" />
+              </>
+            )}
+            
+            {/* View Toggle */}
+            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-gray-200 text-gray-800" : "text-gray-400 hover:text-gray-600"}`}
+                title="Grid view"
+              >
+                <Grid3x3 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-gray-200 text-gray-800" : "text-gray-400 hover:text-gray-600"}`}
+                title="List view"
+              >
+                <List className="w-4 h-4" />
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Filters - enhanced */}
+        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -173,11 +197,14 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {/* List */}
+        {/* List/Grid View */}
         {loading ? (
-          <div className="space-y-3">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-white rounded-xl border-2 border-gray-200 animate-pulse shadow-sm" />
+          <div className={viewMode === "grid" 
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            : "space-y-3"
+          }>
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className={`${viewMode === "grid" ? "h-64" : "h-32"} bg-white rounded-xl border-2 border-gray-200 animate-pulse shadow-sm`} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -199,7 +226,10 @@ export default function HistoryPage() {
             </Link>
           </motion.div>
         ) : (
-          <div className="space-y-3">
+          <div className={viewMode === "grid" 
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            : "space-y-3"
+          }>
             <AnimatePresence>
               {filtered.map((insp, i) => {
                 const reg = insp.registration;
@@ -209,138 +239,34 @@ export default function HistoryPage() {
                 const defects = completed.reduce((a, img) => a + (img.analysisResult?.issues?.length || 0), 0);
                 const status = getStatusColor(insp);
 
-                return (
-                  <motion.div
+                return viewMode === "grid" ? (
+                  <InspectionGridCard
                     key={insp.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="group bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-gray-400 hover:shadow-lg hover:shadow-gray-100/50 transition-all duration-200"
-                  >
-                    <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0 w-full">
-                        {/* Header row */}
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <h3 className="text-base font-bold text-gray-900 truncate">
-                            {reg.gunName}
-                          </h3>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${status.bg} ${status.border} ${status.color}`}>
-                            {status.label}
-                          </span>
-                          {defects > 0 && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-600 text-[10px] font-semibold">
-                              <AlertCircle className="w-3 h-3" />
-                              {defects} defect{defects !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                          {insp.aggregateHealthScore !== undefined && insp.aggregateHealthScore > 0 && (
-                            <div className="ml-auto sm:ml-0">
-                              <HealthScore score={insp.aggregateHealthScore} size="sm" />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Details grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                          <div className="flex items-center gap-1.5 text-gray-500">
-                            <Target className="w-3 h-3 text-gray-400" />
-                            <span className="font-mono font-medium text-gray-700">
-                              {reg.caliber === "Other" ? reg.customCaliber : reg.caliber}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-gray-500">
-                            <User className="w-3 h-3 text-gray-400" />
-                            <span className="text-gray-700">{reg.inspectorName}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-gray-500">
-                            <Calendar className="w-3 h-3 text-gray-400" />
-                            <span className="text-gray-700">
-                              {new Date(insp.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-gray-500">
-                            <FileText className="w-3 h-3 text-gray-400" />
-                            <span className="text-gray-700">
-                              {insp.images.length} image{insp.images.length !== 1 ? "s" : ""}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Batch and serial */}
-                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
-                          <span className="flex items-center gap-1 text-gray-400">
-                            <span className="font-semibold text-gray-500">Batch:</span>
-                            <span className="font-mono text-gray-700">{reg.batchNumber}</span>
-                          </span>
-                          <span className="w-px h-3 bg-gray-200" />
-                          <span className="flex items-center gap-1 text-gray-400">
-                            <span className="font-semibold text-gray-500">Serial:</span>
-                            <span className="font-mono text-gray-700">{reg.barrelSerialNumber}</span>
-                          </span>
-                        </div>
-
-                        {/* Image status indicators */}
-                        <div className="flex flex-wrap items-center gap-3 mt-2">
-                          {completed.length > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-green-600">
-                              <CheckCircle2 className="w-3 h-3" />
-                              {completed.length} analyzed
-                            </span>
-                          )}
-                          {processing.length > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-blue-600">
-                              <Clock className="w-3 h-3 animate-spin" />
-                              {processing.length} processing
-                            </span>
-                          )}
-                          {failed.length > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-red-600">
-                              <AlertCircle className="w-3 h-3" />
-                              {failed.length} failed
-                            </span>
-                          )}
-                          {insp.images.length === 0 && (
-                            <span className="text-xs text-gray-400">No images captured</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
-                        <button
-                          onClick={() => handleReport(insp)}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-400 hover:text-gray-800 hover:bg-gray-50 transition-all shadow-sm"
-                          title="Generate Report"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Report</span>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(insp.id)}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border-2 border-gray-200 text-red-500 hover:border-red-300 hover:bg-red-50 transition-all shadow-sm"
-                          title="Delete Inspection"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Delete</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Progress bar for completion */}
-                    {insp.images.length > 0 && (
-                      <div className="mt-3 h-1 bg-gray-100 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ 
-                            width: `${(completed.length / insp.images.length) * 100}%` 
-                          }}
-                          className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
-                          transition={{ duration: 0.5 }}
-                        />
-                      </div>
-                    )}
-                  </motion.div>
+                    insp={insp}
+                    reg={reg}
+                    completed={completed}
+                    failed={failed}
+                    processing={processing}
+                    defects={defects}
+                    status={status}
+                    onReport={handleReport}
+                    onDelete={handleDelete}
+                    index={i}
+                  />
+                ) : (
+                  <InspectionListItem
+                    key={insp.id}
+                    insp={insp}
+                    reg={reg}
+                    completed={completed}
+                    failed={failed}
+                    processing={processing}
+                    defects={defects}
+                    status={status}
+                    onReport={handleReport}
+                    onDelete={handleDelete}
+                    index={i}
+                  />
                 );
               })}
             </AnimatePresence>
@@ -348,5 +274,304 @@ export default function HistoryPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Grid Card Component ─────────────────────────────────────────────────
+
+function InspectionGridCard({
+  insp,
+  reg,
+  completed,
+  failed,
+  processing,
+  defects,
+  status,
+  onReport,
+  onDelete,
+  index
+}: {
+  insp: Inspection;
+  reg: any;
+  completed: any[];
+  failed: any[];
+  processing: any[];
+  defects: number;
+  status: any;
+  onReport: (insp: Inspection) => void;
+  onDelete: (id: string) => void;
+  index: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className="group bg-white border-2 border-gray-200 rounded-xl overflow-hidden hover:border-gray-400 hover:shadow-lg hover:shadow-gray-100/50 transition-all duration-200"
+    >
+      <div className="p-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="text-sm font-bold text-gray-900 truncate flex-1">
+            {reg.gunName}
+          </h3>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${status.bg} ${status.border} ${status.color} flex-shrink-0`}>
+            {status.label}
+          </span>
+        </div>
+
+        {/* Details */}
+        <div className="space-y-1.5 text-xs">
+          <div className="flex items-center gap-1.5 text-gray-500">
+            <Target className="w-3 h-3 text-gray-400" />
+            <span className="font-mono font-medium text-gray-700">
+              {reg.caliber === "Other" ? reg.customCaliber : reg.caliber}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-gray-500">
+            <User className="w-3 h-3 text-gray-400" />
+            <span className="text-gray-700 truncate">{reg.inspectorName}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-gray-500">
+            <Calendar className="w-3 h-3 text-gray-400" />
+            <span className="text-gray-700">
+              {new Date(insp.createdAt).toLocaleDateString()}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-gray-500">
+            <FileText className="w-3 h-3 text-gray-400" />
+            <span className="text-gray-700">
+              {insp.images.length} image{insp.images.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+
+        {/* Health Score */}
+        {insp.aggregateHealthScore !== undefined && insp.aggregateHealthScore > 0 && (
+          <div className="mt-3 flex justify-center">
+            <HealthScore score={insp.aggregateHealthScore} size="sm" />
+          </div>
+        )}
+
+        {/* Status indicators */}
+        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+          {completed.length > 0 && (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <CheckCircle2 className="w-3 h-3" />
+              {completed.length}
+            </span>
+          )}
+          {processing.length > 0 && (
+            <span className="flex items-center gap-1 text-xs text-blue-600">
+              <Clock className="w-3 h-3 animate-spin" />
+              {processing.length}
+            </span>
+          )}
+          {failed.length > 0 && (
+            <span className="flex items-center gap-1 text-xs text-red-600">
+              <AlertCircle className="w-3 h-3" />
+              {failed.length}
+            </span>
+          )}
+          {defects > 0 && (
+            <span className="flex items-center gap-1 text-xs text-red-600 ml-auto font-semibold">
+              <AlertCircle className="w-3 h-3" />
+              {defects} defects
+            </span>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+          <button
+            onClick={() => onReport(insp)}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-gray-600 hover:border-gray-400 hover:text-gray-800 hover:bg-gray-50 transition-all"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Report
+          </button>
+          <button
+            onClick={() => onDelete(insp.id)}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-red-500 hover:border-red-300 hover:bg-red-50 transition-all"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        {insp.images.length > 0 && (
+          <div className="mt-3 h-1 bg-gray-100 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ 
+                width: `${(completed.length / insp.images.length) * 100}%` 
+              }}
+              className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── List Item Component ─────────────────────────────────────────────────
+
+function InspectionListItem({
+  insp,
+  reg,
+  completed,
+  failed,
+  processing,
+  defects,
+  status,
+  onReport,
+  onDelete,
+  index
+}: {
+  insp: Inspection;
+  reg: any;
+  completed: any[];
+  failed: any[];
+  processing: any[];
+  defects: number;
+  status: any;
+  onReport: (insp: Inspection) => void;
+  onDelete: (id: string) => void;
+  index: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ delay: index * 0.04 }}
+      className="group bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-gray-400 hover:shadow-lg hover:shadow-gray-100/50 transition-all duration-200"
+    >
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+        <div className="flex-1 min-w-0 w-full">
+          {/* Header row */}
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h3 className="text-base font-bold text-gray-900 truncate">
+              {reg.gunName}
+            </h3>
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${status.bg} ${status.border} ${status.color}`}>
+              {status.label}
+            </span>
+            {defects > 0 && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-600 text-[10px] font-semibold">
+                <AlertCircle className="w-3 h-3" />
+                {defects} defect{defects !== 1 ? "s" : ""}
+              </span>
+            )}
+            {insp.aggregateHealthScore !== undefined && insp.aggregateHealthScore > 0 && (
+              <div className="ml-auto sm:ml-0">
+                <HealthScore score={insp.aggregateHealthScore} size="sm" />
+              </div>
+            )}
+          </div>
+
+          {/* Details grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="flex items-center gap-1.5 text-gray-500">
+              <Target className="w-3 h-3 text-gray-400" />
+              <span className="font-mono font-medium text-gray-700">
+                {reg.caliber === "Other" ? reg.customCaliber : reg.caliber}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-gray-500">
+              <User className="w-3 h-3 text-gray-400" />
+              <span className="text-gray-700">{reg.inspectorName}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-gray-500">
+              <Calendar className="w-3 h-3 text-gray-400" />
+              <span className="text-gray-700">
+                {new Date(insp.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-gray-500">
+              <FileText className="w-3 h-3 text-gray-400" />
+              <span className="text-gray-700">
+                {insp.images.length} image{insp.images.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+
+          {/* Batch and serial */}
+          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
+            <span className="flex items-center gap-1 text-gray-400">
+              <span className="font-semibold text-gray-500">Batch:</span>
+              <span className="font-mono text-gray-700">{reg.batchNumber}</span>
+            </span>
+            <span className="w-px h-3 bg-gray-200" />
+            <span className="flex items-center gap-1 text-gray-400">
+              <span className="font-semibold text-gray-500">Serial:</span>
+              <span className="font-mono text-gray-700">{reg.barrelSerialNumber}</span>
+            </span>
+          </div>
+
+          {/* Image status indicators */}
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            {completed.length > 0 && (
+              <span className="flex items-center gap-1 text-xs text-green-600">
+                <CheckCircle2 className="w-3 h-3" />
+                {completed.length} analyzed
+              </span>
+            )}
+            {processing.length > 0 && (
+              <span className="flex items-center gap-1 text-xs text-blue-600">
+                <Clock className="w-3 h-3 animate-spin" />
+                {processing.length} processing
+              </span>
+            )}
+            {failed.length > 0 && (
+              <span className="flex items-center gap-1 text-xs text-red-600">
+                <AlertCircle className="w-3 h-3" />
+                {failed.length} failed
+              </span>
+            )}
+            {insp.images.length === 0 && (
+              <span className="text-xs text-gray-400">No images captured</span>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+          <button
+            onClick={() => onReport(insp)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-400 hover:text-gray-800 hover:bg-gray-50 transition-all shadow-sm"
+            title="Generate Report"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Report</span>
+          </button>
+          <button
+            onClick={() => onDelete(insp.id)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border-2 border-gray-200 text-red-500 hover:border-red-300 hover:bg-red-50 transition-all shadow-sm"
+            title="Delete Inspection"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Delete</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Progress bar for completion */}
+      {insp.images.length > 0 && (
+        <div className="mt-3 h-1 bg-gray-100 rounded-full overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ 
+              width: `${(completed.length / insp.images.length) * 100}%` 
+            }}
+            className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
+            transition={{ duration: 0.5 }}
+          />
+        </div>
+      )}
+    </motion.div>
   );
 }
