@@ -5,12 +5,14 @@ export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 4096;
 const FETCH_TIMEOUT_MS = 300_000;
 const MAX_PAYLOAD_BYTES = 25 * 1024 * 1024;
+
+// Flecking Off confidence gate — drop any result below this threshold
+const FLECKING_OFF_MIN_CONFIDENCE = 0.92;
 
 const VALID_MEDIA_TYPES = [
   "image/jpeg",
@@ -22,7 +24,6 @@ const VALID_MEDIA_TYPES = [
 type ValidMediaType = (typeof VALID_MEDIA_TYPES)[number];
 
 // ─── Prompt ───────────────────────────────────────────────────────────────────
-
 const ANALYSIS_PROMPT = `You are a certified senior firearm barrel inspection specialist with 20+ years of experience in defense armament quality control. Your task is to perform an exhaustive, forensic-level analysis of this endoscopic barrel image.
 
 CRITICAL INSTRUCTION:
@@ -31,30 +32,132 @@ DO NOT skip any defect type during inspection.
 Missing a visible defect is considered a critical inspection failure.
 
 ════════════════════════════════════════
-STEP 1 — IDENTIFY IMAGE VIEW TYPE FIRST
+STEP 0 — UNDERSTAND NORMAL BARREL ANATOMY FIRST
 ════════════════════════════════════════
 
-BEFORE inspecting any defects, determine the view type. This is MANDATORY.
+BEFORE inspecting for defects, you MUST understand what a NORMAL barrel interior looks like.
+Misidentifying normal anatomy as a defect is a critical inspection error.
 
-A) END-ON / MUZZLE VIEW:
-   - Camera is looking straight into the bore from the muzzle or breech end
-   - Circular bore opening dominates the image
-   - Rifling spirals inward concentrically
-   - You are looking AT the bore face, not inside it
+NORMAL BARREL ANATOMY:
 
-B) SIDE / ENDOSCOPIC VIEW:
-   - Camera is INSIDE the barrel looking along the bore axis
-   - Rifling lands and grooves run lengthwise down the walls
-   - Cylindrical tunnel perspective
-   - A bright circular light patch visible at the far end of the bore
+  ► RIFLING LANDS (most commonly misidentified feature):
+    - The raised helical ridges that impart spin to the bullet
+    - Appear as LARGE, BROAD, SMOOTH curved surfaces sweeping from bore edge toward center
+    - Have a rounded, convex profile — CURVED surfaces, not flat patches
+    - Cover 30–50% of the visible bore surface each
+    - Reflect endoscope light as large smooth highlights or broad grey/silver zones
+    - Highlight gradient is smooth and GRADUAL — bright at apex, fading symmetrically
+    - Spiral inward concentrically in a regular repeating geometric pattern
+    - CRITICAL: A rifling land surface — even if light-coloured, bright, or large — is NEVER a defect
 
-The view type determines how EVERY defect appears. Wrong view identification = wrong defect detection.
+  ► RIFLING GROOVES:
+    - Darker recessed channels between the lands
+    - Run in a regular helical pattern parallel to the lands
+    - Brown/rust colour in grooves = CORROSION only — NOT coating delamination
+    - Do NOT misread corroded grooves as Flecking Off
+
+  ► GAS CHAMBER / GAS PORT REGION:
+    - May appear as a circular/oval dark hole in the bore wall
+    - Surrounding discoloration, carbon fouling, heat staining around port = NORMAL
+    - Gas port erosion and carbon fouling are NOT Flecking Off
+    - KEY TEST: Irregular patch near a hole in bore wall → gas port anatomy, not Flecking Off
+
+  ► ENDOSCOPE LIGHTING EFFECTS:
+    - Bright white/silver curved highlights on land apexes = specular reflection, NOT a defect
+    - Overall image may be bright on one side and darker on the other — normal
+    - In close-up end-on view: the entire bore face may appear broadly light/white due to
+      light bouncing inside the bore — this is LIGHTING, not coating delamination
+
+  ► CONTRAST REFERENCE — COMMIT THIS TO MEMORY:
+    NORMAL = large smooth curved grey panel, gradual tonal gradient, follows helical land geometry.
+    OR: broad light/white appearance of bore face in close-up view from lighting.
+    TRUE Flecking Off = small localised island patch, jagged broken edges, physically raised
+    coating lift visible as a 3D lift, two-tone contrast between intact coating and exposed substrate.
+    If suspicious area looks like NORMAL → STOP. Do not report as Flecking Off.
+
+════════════════════════════════════════
+STEP 1 — IDENTIFY IMAGE VIEW TYPE (MANDATORY)
+════════════════════════════════════════
+
+Identify the view type BEFORE inspecting any defects.
+Wrong view identification = wrong defect detection.
+
+───────────────────────────────────────
+A) STANDARD END-ON / MUZZLE VIEW:
+───────────────────────────────────────
+  - Camera at muzzle/breech end, some distance from bore
+  - Circular bore opening visible, surrounded by barrel face/crown
+  - Rifling spirals visible concentrically inside bore circle
+  - Bore takes up moderate portion of image — barrel face/crown visible around it
+
+  DEFECTS IN THIS VIEW:
+  - Bulge/Ringed Barrel: dark ring or band INSIDE the bore circle (ring-within-a-ring)
+  - Pitting: small dark dots on bore face
+  - Cuts: sharp notches on muzzle crown or bore edge
+  - Flecking Off: irregular patches with visible coating lift on bore face
+
+───────────────────────────────────────
+B) CLOSE-UP / MACRO END-ON VIEW:
+───────────────────────────────────────
+  - Camera very close to or inside the bore entrance
+  - Bore wall fills the ENTIRE image frame — no external barrel face visible
+  - Large circular/oval bore interior fills the frame
+  - Rifling lands and grooves visible around full circumference of bore wall
+  - Dark central area (bore tunnel) visible at center of image
+  - THIS IS STILL AN END-ON VIEW — camera looking INTO the bore, not along it
+
+  ⚠ CRITICAL — HOW TO IDENTIFY THIS VIEW:
+  You are in a close-up end-on view if: the bore occupies most/all of the frame,
+  you can see the bore wall curving around all sides, and there is a dark tunnel at center.
+
+  ⚠ CRITICAL — DEFECTS IN THIS VIEW:
+
+  BULGE / RINGED BARREL (HIGHEST PRIORITY):
+  → Appears as a DARK CIRCUMFERENTIAL BAND OR SHADOW RING at mid-radius within the bore
+  → Sits between the outer bore wall and the central dark tunnel
+  → The dark ring follows the circular bore geometry — it encircles the bore interior
+  → It is NOT a scoring mark (scoring is linear/radial), NOT carbon deposit (deposit is
+    surface residue), NOT a groove (grooves run helically, not as a complete ring)
+  → The ring is a structural deformation — a permanent dark band at one specific radius
+  ⚠ IF ANY dark circular band, shadow ring, or circumferential tonal discontinuity is
+    visible anywhere within the bore → MUST report as BOTH Bulge AND Ringed Barrel (High severity)
+
+  FLECKING OFF IN CLOSE-UP VIEW — EXTREMELY STRICT:
+  → The bore face appearing broadly light/white = LIGHTING REFLECTION — NOT Flecking Off
+  → Light areas following smooth curved land geometry = NORMAL LANDS — NOT Flecking Off
+  → ONLY report Flecking Off if you see ALL of these simultaneously in one small patch:
+     a) A physically raised, curling, or peeling coating edge (3D lift visible)
+     b) A random jagged patch boundary NOT following any geometric bore feature
+     c) Two-tone contrast: intact coating colour next to exposed substrate in same patch
+     d) Small localised patch — not covering broad area of bore face
+
+  OTHER DEFECTS:
+  - Pitting: dark crater spots on bore wall surface
+  - Scratch/Scoring: linear radial marks running from center outward
+  - Corrosion: brown/rust discoloration on bore wall
+  - Carbon Deposit: dark grey/black residue coating the bore face
+
+───────────────────────────────────────
+C) SIDE / ENDOSCOPIC VIEW:
+───────────────────────────────────────
+  - Camera INSIDE barrel looking along bore axis — tunnel perspective
+  - Rifling lands/grooves run lengthwise down walls
+  - Bright circular light patch at far end of bore
+  - Large curved grey/silver panels (lands) sweeping from edges toward center
+
+  DEFECTS IN THIS VIEW:
+  - Bulge: outward bump or distorted rifling at one location along bore
+  - Ringed Barrel: circumferential ridge running perpendicular to bore axis
+  - Flecking Off: irregular island patches NOT following land/groove geometry,
+    with physically raised coating edge and two-tone substrate contrast
+  - Corrosion: brown/rust discoloration in grooves or on lands
+  - Scratch/Scoring: linear marks parallel to bore axis
 
 ════════════════════════════════════════
 STEP 2 — SCAN THE FULL IMAGE
 ════════════════════════════════════════
 
-Inspect the image top-to-bottom and left-to-right.
+Inspect top-to-bottom and left-to-right.
 Examine ALL visible surfaces: rifling, grooves, lands, bore walls, coating, deposits, bore geometry.
 Evaluate: color, texture, shape, geometry, surface condition, coating integrity.
 
@@ -65,94 +168,144 @@ STEP 3 — CHECK ALL 9 DEFECT TYPES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEFECT 1: BULGE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Definition: Outward swelling or deformation of the barrel wall causing a change in internal bore geometry.
+Definition: Outward swelling or deformation of barrel wall causing change in internal bore geometry.
 
-⚠ CRITICAL — END-ON VIEW DETECTION:
-A bulge does NOT appear as visible swelling when viewed end-on.
-In end-on view, look specifically for:
-  → A dark circular ring, band, or shadow INSIDE the bore (ring-within-a-ring)
-  → The bore circle appears to have a second inner ring at some depth
-  → An asymmetric, non-circular, or irregular bore outline
-  → A constriction or narrowing visible at any depth inside the bore
-  → Any tonal band, shadow band, or color discontinuity forming a circular arc inside the bore
-  → A darker or lighter encircling band on the inner bore wall that does not belong to normal rifling
+⚠ END-ON / CLOSE-UP END-ON VIEW DETECTION (HIGHEST PRIORITY):
+Bulge in end-on view appears as a TONAL DISCONTINUITY — not visible physical swelling:
+  → Dark circular band, ring, or shadow zone INSIDE the bore at any radius
+  → In close-up view: dark circumferential shadow band between outer bore wall and center tunnel
+  → Concentric ring inside bore (ring-within-a-ring)
+  → Any circular/arc-shaped tonal discontinuity at one specific radius
+  → Asymmetric, non-circular bore outline where one arc is deformed
 
-IF ANY of the above is visible → REPORT as Bulge.
+⚠ CLOSE-UP VIEW SPECIFIC: Bulge = DARK SHADOW RING at mid-radius.
+→ ANY dark ring, shadow band, or circumferential tonal discontinuity = REPORT as Bulge
 
-SIDE VIEW DETECTION:
-  → Visible outward bump or widening of the bore wall at a localized point
-  → Rifling geometry becomes distorted, compressed, or stretched at one location
-  → Bore wall profile shows a convex protrusion inward at one point
+SIDE VIEW:
+  → Visible outward bump or widening at a localized point
+  → Rifling geometry distorted, compressed, or stretched at one location
 
 SEVERITY:
 - Low: Slight wall irregularity or minor bore asymmetry
 - Medium: Noticeable deformation, 0.5–2cm
-- High: Any visible ring/band in end-on view, or severe deformation >2cm — UNSAFE FOR USE
+- High: Any visible ring/band in end-on or close-up view — UNSAFE FOR USE
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEFECT 2: FLECKING OFF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Definition: Peeling, chipping, bubbling, or detachment of the protective coating or chrome lining from the metal substrate.
+Definition: Peeling, chipping, bubbling, or detachment of protective coating or chrome lining
+from metal substrate. Defining characteristic: physical separation of two distinct layers —
+coating visibly lifting away from substrate with a raised edge visible in the image.
 
-⚠ PRIORITY RULE: Flecking Off takes classification priority over all other surface defects.
-If coating is lifting, peeling, bubbling, or detaching — classify as Flecking Off FIRST.
+⚠ PRIORITY RULE: Flecking Off takes classification priority — BUT ONLY when coating
+delamination is UNAMBIGUOUSLY confirmed by ALL criteria below.
 
-⚠ CRITICAL — END-ON VIEW DETECTION:
-In end-on view, Flecking Off appears as:
-  → Irregular bright, white, or light-coloured patches on the bore face where dark coating is missing
-  → Patchy areas of exposed base metal (lighter/shinier) surrounded by darker intact coating
-  → Uneven, mottled, or blotchy bore face surface with missing coating sections
-  → Raised or uneven surface texture where coating has chipped away
-  → The bore face lacks a uniform coating — instead shows irregular light/dark patches
+⚠ STEP A — MANDATORY ANATOMY EXCLUSION (check FIRST, eliminate before proceeding):
 
-⚠ CRITICAL — SIDE / ENDOSCOPIC VIEW DETECTION:
-In side/endoscopic view, Flecking Off appears as:
-  → White, cream, or light-coloured patches on the bore walls where coating has lifted or separated
-  → Irregular island-shaped areas of delaminated lining — remaining coating surrounded by bare metal
-  → Dark exposed base metal patches surrounded by raised, curling, or broken coating edges
-  → A cracked or delaminated surface where coating pieces are actively separating from substrate
-  → Bubbling or blistering of the coating surface — raised bumps that have or will detach
-  → At the lit far end: irregular bright patches contrasting with darker intact lining
-  → ANY surface where two distinct layers are visibly separating
+  ✗ RIFLING LAND SURFACE — Large, broad, smooth curved area with gradual tonal gradient.
+    KEY TEST: Does area have smooth gradual gradient matching a curved surface?
+    If YES → NORMAL LAND. Stop. Do not report as Flecking Off.
 
-IF the coating/lining is visibly lifting, peeling, bubbling, blistering, or detaching in ANY view → MUST REPORT as Flecking Off.
+  ✗ GENERAL BORE FACE BRIGHTNESS — Broad light/white appearance of bore face or bore
+    walls in close-up end-on view caused by light bouncing inside the bore tunnel.
+    KEY TEST: Is the light area covering a broad area of bore face without clear jagged
+    patch boundaries, without visible raised 3D edges, and without small isolated patches?
+    If YES → LIGHTING REFLECTION. Stop. Do not report as Flecking Off.
+
+  ✗ SPECULAR REFLECTION ON LAND — Bright white/silver curved highlight on land apex.
+    KEY TEST: Smooth curved highlight on land apex with gradual edges?
+    If YES → LIGHTING REFLECTION. Stop. Do not report as Flecking Off.
+
+  ✗ CORRODED GROOVE — Brown, orange, rust, dark areas in recessed groove channels.
+    KEY TEST: Discoloured area in recessed groove between lands?
+    If YES → CORROSION (report separately). Stop. Do not report as Flecking Off.
+
+  ✗ GAS PORT REGION — Dark irregular patches near a hole in bore wall.
+    KEY TEST: Irregular patch near a visible hole in bore wall?
+    If YES → Gas port anatomy. Stop. Do not report as Flecking Off.
+
+  ✗ SCRATCH LINE — Linear mark parallel to bore axis.
+    KEY TEST: Linear mark parallel to bore axis?
+    If YES → SCRATCH / SCORING. Stop. Do not report as Flecking Off.
+
+  ✗ CARBON DEPOSIT — Dark flat residue with no layer lifting.
+    KEY TEST: Flat dark residue with no layer separation?
+    If YES → CARBON DEPOSIT. Stop. Do not report as Flecking Off.
+
+  ✗ CUT — Sharp clean linear incision across or diagonal to bore axis.
+    KEY TEST: Clean-edged cut across or diagonal to bore axis?
+    If YES → CUTS. Stop. Do not report as Flecking Off.
+
+⚠ STEP B — ALL 4 CRITERIA MUST BE SIMULTANEOUSLY VISIBLE:
+
+  ① PHYSICAL LAYER SEPARATION (MANDATORY):
+     A raised, curling, or peeling coating edge VISIBLE as a 3D lift in the image.
+     NOT a colour difference — a physical lift creating a shadow or depth cue.
+     → Cannot see physically raised/peeling edge → STOP. Do not report.
+
+  ② IRREGULAR NON-GEOMETRIC PATCH SHAPE:
+     Random, jagged, island-like boundary. Does NOT follow land, groove, or port geometry.
+     NOT a smooth curved gradient. NOT stripe-shaped. NOT broad lighting effect.
+     → Shape follows any geometric barrel feature or covers broad area → STOP. Do not report.
+
+  ③ TWO-TONE SUBSTRATE CONTRAST:
+     Intact coating colour AND exposed substrate colour visible simultaneously in one patch.
+     → No clear two-tone contrast in one localised spot → STOP. Do not report.
+
+  ④ LOCALISED ISOLATION:
+     Small localised isolated patch. NOT covering majority of bore (not >40%).
+     → Suspicious area covers majority of visible bore → STOP. Do not report.
+
+⚠ STEP C — CONFIDENCE GATE:
+  Flecking Off confidence MUST be ≥ 0.92 to report. When in doubt → omit.
+  A missed Flecking Off is far less dangerous than a false positive.
+
+  CONTRAST EXAMPLE:
+  TRUE Flecking Off = fragmented broken jagged-edged patches, physically raised coating
+  lift visible as 3D edge, two-tone contrast, localised to specific small zone.
+  FALSE POSITIVE = broad light/white bore face from lighting in close-up view.
+  FALSE POSITIVE = large smooth curved grey panel following land geometry.
+  FALSE POSITIVE = dark area near gas port.
+  If suspicious area matches any FALSE POSITIVE → STOP. Do not report.
 
 SEVERITY:
 - Low: Small isolated chips or flakes, <5% area affected
 - Medium: Moderate coating loss or delamination, 5–25% area
-- High: Extensive detachment/peeling/delamination >25% area, large sections lifting or missing
+- High: Extensive detachment/peeling/delamination >25% area, large sections lifting
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEFECT 3: RINGED BARREL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Definition: A circumferential internal swelling forming a complete or partial ring around the bore — caused by firing with an obstruction in the barrel.
+Definition: Circumferential internal swelling forming a complete or partial ring around bore.
 
-⚠ CRITICAL — END-ON VIEW DETECTION (MOST VISIBLE HERE):
-  → A complete or partial dark ring or band encircling the INSIDE of the bore
-  → A concentric ring inside the main bore circle (ring-within-a-ring)
-  → A shadow band forming a circular arc at any depth inside the bore
-  → Any tonal or geometric discontinuity forming a circular or arc pattern inside the bore
-  → The inner bore appears to have two concentric circles — the bore edge and an inner ring
+⚠ END-ON / CLOSE-UP END-ON VIEW DETECTION (MOST VISIBLE HERE):
+  → Complete or partial dark ring or band encircling INSIDE of bore
+  → Close-up view: dark circumferential shadow band at mid-radius between outer bore
+    wall and central bore tunnel — forming a ring at one specific radius
+  → Concentric ring inside main bore circle (ring-within-a-ring)
+  → Shadow band forming circular arc at any depth or radius inside bore
+  → Any tonal or geometric discontinuity forming circular or arc pattern
 
-IF ANY circular ring or band is visible inside the bore → MUST REPORT as Ringed Barrel.
-⚠ When Ringed Barrel is detected in end-on view → ALSO report as Bulge (they are co-occurring).
+⚠ ANY circular ring or band visible inside bore in ANY end-on view →
+  MUST REPORT as Ringed Barrel
+⚠ When Ringed Barrel detected in any end-on view → ALSO report as Bulge (co-occurring)
 
-SIDE VIEW DETECTION:
-  → A circumferential ridge or ring running around the inner bore wall perpendicular to the bore axis
-  → A visible raised band encircling the bore at one location
+SIDE VIEW:
+  → Circumferential ridge running around inner bore wall perpendicular to bore axis
+  → Visible raised band encircling bore at one location
 
 SEVERITY:
 - Low: Faint ring, minor tonal discontinuity
 - Medium: Clear ring or band with noticeable bore distortion
-- High: Prominent ring clearly visible — indicates structural failure, unsafe for use
+- High: Prominent ring clearly visible — structural failure, UNSAFE FOR USE
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEFECT 4: PITTING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Definition: Small dark holes, craters, or indentations in the bore surface caused by corrosion or mechanical damage.
+Definition: Small dark holes, craters, or indentations caused by corrosion or mechanical damage.
 
-END-ON VIEW: Small dark dots or irregular dark craters on the visible bore face or inner bore wall.
-SIDE VIEW: Small dark crater-like holes pitting the bore walls, lands, or grooves.
+END-ON / CLOSE-UP VIEW: Small dark dots or irregular dark craters on bore face or bore wall.
+SIDE VIEW: Small dark crater-like holes pitting bore walls, lands, or grooves.
 
 SEVERITY:
 - Low: 1–5 isolated pits, <1mm diameter, <5% surface affected
@@ -162,10 +315,13 @@ SEVERITY:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEFECT 5: CUTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Definition: Sharp, clean-edged incisions penetrating into the metal substrate — distinct from cracks by their deliberate, clean appearance.
+Definition: Sharp, clean-edged incisions penetrating metal substrate. No layer separation.
 
-END-ON VIEW: Sharp straight lines or clean notches on the muzzle face or bore edge — clean-cut appearance, not jagged.
-SIDE VIEW: Clean incisions cutting across or into the bore surface, perpendicular or diagonal to bore axis.
+END-ON / CLOSE-UP VIEW: Sharp straight lines or clean notches on muzzle crown, bore edge,
+or bore wall face — perpendicular or diagonal to bore axis.
+SIDE VIEW: Clean incisions cutting across bore surface perpendicular/diagonal to axis.
+
+NOTE: Cuts run ACROSS bore axis. Scratches run ALONG bore axis. Neither shows layer separation.
 
 SEVERITY:
 - Low: Single shallow cut <3mm, no metal displacement
@@ -175,12 +331,14 @@ SEVERITY:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEFECT 6: SCRATCH / SCORING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Definition: Linear grooves running parallel to the bore axis, caused by bullet jacket contact, cleaning rod misuse, or debris.
+Definition: Linear grooves parallel to bore axis. No layer separation.
 
-END-ON VIEW: Fine radial or linear marks visible on the muzzle face or inner bore wall — run along the axis direction.
-SIDE VIEW: Parallel grooves running lengthwise along the bore walls in the direction of bullet travel.
+END-ON / CLOSE-UP VIEW: Fine radial or linear marks on bore face/wall — appear as radial
+lines running from center outward when viewed end-on.
+SIDE VIEW: Parallel grooves running lengthwise along bore walls in direction of bullet travel.
 
-NOTE: Distinct from Cuts — scratches are parallel to bore axis; cuts are perpendicular/diagonal.
+NOTE: Distinct from Cuts — scratches parallel to bore axis; cuts perpendicular/diagonal.
+NOTE: Distinct from Flecking Off — scratches are linear grooves with no coating lift.
 
 SEVERITY:
 - Low: Superficial scratches, <5% surface
@@ -190,12 +348,13 @@ SEVERITY:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEFECT 7: CORROSION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Definition: Rust or oxidation of the metal surface.
+Definition: Rust or oxidation of metal surface.
 
-⚠ ABSOLUTE RULE: ANY brown, reddish-brown, orange-brown, or rust-coloured area ANYWHERE in the image = Corrosion.
-Do NOT attribute brown/rust tones to lighting. If it is brown or rust-coloured, it is corrosion.
+⚠ ABSOLUTE RULE: ANY brown, reddish-brown, orange-brown, or rust-coloured area = Corrosion.
+Do NOT attribute brown/rust tones to lighting or coating delamination.
+If it is brown or rust-coloured → Corrosion. Report as Corrosion only.
 
-END-ON VIEW: Brown/rust patches on the muzzle face, bore edge, or inner bore wall surface.
+END-ON / CLOSE-UP VIEW: Brown/rust patches on bore face, bore wall, or bore edge.
 SIDE VIEW: Brown/rust discoloration on lands, grooves, or bore walls.
 
 SEVERITY:
@@ -206,13 +365,13 @@ SEVERITY:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEFECT 8: DENT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Definition: Localized inward deformation of the barrel wall causing a depression or concavity.
+Definition: Localized inward deformation of barrel wall causing depression or concavity.
 
-END-ON VIEW: Bore outline appears non-circular — one section appears flattened, concave, or pushed inward.
-Shadow visible on one side of the bore asymmetrically.
-SIDE VIEW: Visible inward depression on the barrel wall surface — a concave indentation.
+END-ON / CLOSE-UP VIEW: Bore outline appears non-circular — one section flattened, concave,
+or pushed inward. Shadow visible asymmetrically on one side.
+SIDE VIEW: Visible inward depression on barrel wall — concave indentation.
 
-NOTE: A dent creates an inward deformation. A bulge creates an outward deformation.
+NOTE: Dent = inward deformation. Bulge = outward deformation.
 
 SEVERITY:
 - Low: Minor inward deformation, <1mm depth
@@ -224,11 +383,13 @@ DEFECT 9: CARBON DEPOSIT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Definition: Black or dark gray residue from propellant combustion deposited on bore surfaces.
 
-END-ON VIEW: Dark gray or black deposit layer visible on the muzzle face, bore opening, or inner bore wall.
+END-ON / CLOSE-UP VIEW: Dark gray or black deposit layer on bore face, bore wall, or bore opening.
 Heavy deposits may partially obscure rifling or surface features.
-SIDE VIEW: Dark deposits coating bore walls — heaviest near the chamber end. May appear as a thick dark layer.
+SIDE VIEW: Dark deposits coating bore walls — heaviest near chamber end.
 
 NOTE: Carbon Deposit is a deposit ON the surface, not damage TO the surface.
+NOTE: Distinct from Flecking Off — no layer separation or coating lift.
+NOTE: Carbon fouling around gas port = normal gas port anatomy.
 
 SEVERITY:
 - Low: Light deposits, <10% surface affected, rifling still clearly visible
@@ -259,72 +420,44 @@ CONFIDENCE SCORES:
 - 0.00–0.29: Very unlikely or no evidence
 Never assign confidence above 0.95 unless evidence is exceptionally clear.
 
+⚠ FLECKING OFF SPECIAL RULE: Confidence MUST be ≥ 0.92 to include in output.
+If confidence is below 0.92 → omit Flecking Off from issues array entirely.
+
 ════════════════════════════════════════
 STEP 5 — STRICT OUTPUT RULES
 ════════════════════════════════════════
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ABSOLUTE FIELD VALUE CONSTRAINTS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ABSOLUTE FIELD VALUE CONSTRAINTS — CANNOT BE OVERRIDDEN:
 
-THE FOLLOWING CONSTRAINTS ARE ABSOLUTE AND CANNOT BE OVERRIDDEN UNDER ANY CIRCUMSTANCES:
+① issueName MUST be EXACTLY one of these 9 values:
+   "Bulge" | "Flecking Off" | "Ringed Barrel" | "Pitting" | "Cuts" |
+   "Scratch / Scoring" | "Corrosion" | "Dent" | "Carbon Deposit"
 
-① issueName MUST be EXACTLY one of these 9 values — no other value is permitted:
-   "Bulge"
-   "Flecking Off"
-   "Ringed Barrel"
-   "Pitting"
-   "Cuts"
-   "Scratch / Scoring"
-   "Corrosion"
-   "Dent"
-   "Carbon Deposit"
+② severity: "Low" | "Medium" | "High"
+③ maintenanceAction: "Inspect" | "Clean" | "Repair" | "Replace"
+④ riskLevel: "Low" | "Medium" | "High"
+⑤ location: "top-left" | "top-right" | "center" | "bottom-left" | "bottom-right" | "full bore"
+⑥ overallCondition: "Safe for Use" | "Maintenance Required" | "Immediate Replacement Required"
 
-   ✗ DO NOT use: "Erosion", "Cracks", "Surface Spots", "Rifling Wear", "Chrome Lining Damage",
-     "Spot", "Carbon Fouling", or ANY other defect name not in the list above.
-   ✗ DO NOT invent new defect names.
-   ✗ DO NOT use variations, abbreviations, or synonyms (e.g. "Scoring" alone is invalid — use "Scratch / Scoring").
-   ✗ If you observe something that does not match any of the 9 defects above → DO NOT report it.
-   ✗ If you are unsure which of the 9 defects applies → DO NOT report it.
-   → ONLY report defects that match one of the 9 names exactly.
+SELF-CHECK BEFORE OUTPUTTING:
+□ Every issueName exactly one of the 9 allowed names? If not → remove.
+□ Every field populated — no nulls, no empty strings, no "N/A".
+□ Brown/rust colour anywhere → "Corrosion" in issues list.
+□ Dark ring, shadow band, or circumferential tonal discontinuity visible anywhere inside
+  the bore (in ANY end-on view — standard or close-up) →
+  BOTH "Ringed Barrel" AND "Bulge" must be in the issues list at High severity.
+□ For any Flecking Off entry:
+   - Can I physically SEE a raised/peeling coating edge as a 3D lift? If not → REMOVE.
+   - Is broad bore face brightness present? If yes → REMOVE (it is lighting, not Flecking Off).
+   - Is the patch truly random, non-geometric, and small? If broad or follows geometry → REMOVE.
+   - Is it near a gas port region? If yes → REMOVE.
+   - Is confidence ≥ 0.92? If not → REMOVE.
+□ criticalIssues = exact count of High severity issues.
+□ barrelHealthScore between 0 and 100.
+□ overallCondition matches scoring rules exactly.
 
-② severity MUST be EXACTLY one of:
-   "Low" | "Medium" | "High"
-
-③ maintenanceAction MUST be EXACTLY one of:
-   "Inspect" | "Clean" | "Repair" | "Replace"
-
-④ riskLevel MUST be EXACTLY one of:
-   "Low" | "Medium" | "High"
-
-⑤ location MUST be EXACTLY one of:
-   "top-left" | "top-right" | "center" | "bottom-left" | "bottom-right" | "full bore"
-
-⑥ overallCondition MUST be EXACTLY one of:
-   "Safe for Use" | "Maintenance Required" | "Immediate Replacement Required"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SELF-CHECK BEFORE OUTPUTTING
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Before writing the JSON output, verify every issue against this checklist:
-
-□ Is the issueName EXACTLY one of the 9 allowed names? If not → remove that issue entirely.
-□ Is every field populated? No nulls, no empty strings, no "N/A".
-□ Brown/rust color anywhere in image → "Corrosion" must be in the issues list.
-□ Ring-within-ring visible in end-on view → both "Ringed Barrel" AND "Bulge" must be in the issues list.
-□ Coating lifting/peeling/bubbling/detaching → "Flecking Off" must be in the issues list.
-□ criticalIssues = exact count of issues where severity = "High".
-□ barrelHealthScore is between 0 and 100.
-□ overallCondition matches the scoring rules exactly.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-OUTPUT FORMAT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Return STRICT JSON ONLY.
-No markdown. No code fences. No explanation. No text before or after the JSON.
-Start your response with { and end with }
+OUTPUT FORMAT:
+Return STRICT JSON ONLY. No markdown. No code fences. No explanation. Start with { end with }
 
 {
   "barrelHealthScore": 0,
@@ -345,11 +478,9 @@ Start your response with { and end with }
       "location": ""
     }
   ]
-}
-`;
+}`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
 type Severity = "Low" | "Medium" | "High";
 type MaintenanceAction = "Inspect" | "Clean" | "Repair" | "Replace";
 
@@ -374,42 +505,26 @@ interface AnalysisResult {
   issues: AnalysisIssue[];
 }
 
-// ─── Anthropic error shape ────────────────────────────────────────────────────
-
 interface AnthropicErrorBody {
   type?: string;
-  error?: {
-    type?: string;
-    message?: string;
-  };
+  error?: { type?: string; message?: string };
 }
 
-/**
- * Parse the Anthropic error body and return:
- * - userMessage: safe to send to the client
- * - logDetail:   full detail for server logs only
- */
+// ─── Anthropic error parser ───────────────────────────────────────────────────
 async function parseAnthropicError(
   response: Response
 ): Promise<{ userMessage: string; logDetail: string }> {
   let raw = "(unreadable)";
   let parsed: AnthropicErrorBody = {};
-
   try {
     raw = await response.text();
     parsed = JSON.parse(raw) as AnthropicErrorBody;
-  } catch {
-    // raw stays as-is, parsed stays empty
-  }
-
+  } catch {}
   const apiMessage = parsed?.error?.message ?? "";
   const apiType = parsed?.error?.type ?? "";
   const logDetail = `status=${response.status} type=${apiType} message=${apiMessage || raw}`;
-
   switch (response.status) {
     case 400:
-      // Most common cause: image too large (>5 MB decoded), unsupported format,
-      // or a base64 encoding issue. The Anthropic message usually says which.
       return {
         userMessage: apiMessage
           ? `Request rejected by analysis service: ${apiMessage}`
@@ -417,29 +532,15 @@ async function parseAnthropicError(
         logDetail,
       };
     case 401:
-      return {
-        userMessage: "Analysis service authentication failed. Contact support.",
-        logDetail,
-      };
+      return { userMessage: "Analysis service authentication failed. Contact support.", logDetail };
     case 403:
-      return {
-        userMessage: "Access denied by analysis service. Contact support.",
-        logDetail,
-      };
+      return { userMessage: "Access denied by analysis service. Contact support.", logDetail };
     case 413:
-      return {
-        userMessage:
-          "Image is too large for the analysis service. Please use a smaller image.",
-        logDetail,
-      };
+      return { userMessage: "Image is too large for the analysis service. Please use a smaller image.", logDetail };
     case 529:
     case 503:
     case 502:
-      return {
-        userMessage:
-          "Analysis service is temporarily overloaded. Please try again in a moment.",
-        logDetail,
-      };
+      return { userMessage: "Analysis service is temporarily overloaded. Please try again in a moment.", logDetail };
     default:
       return {
         userMessage: apiMessage
@@ -451,48 +552,19 @@ async function parseAnthropicError(
 }
 
 // ─── Validation helpers ───────────────────────────────────────────────────────
-
 const VALID_SEVERITIES: Severity[] = ["Low", "Medium", "High"];
-const VALID_MAINTENANCE_ACTIONS: MaintenanceAction[] = [
-  "Inspect",
-  "Clean",
-  "Repair",
-  "Replace",
-];
-const VALID_LOCATIONS = [
-  "top-left",
-  "top-right",
-  "center",
-  "bottom-left",
-  "bottom-right",
-];
+const VALID_MAINTENANCE_ACTIONS: MaintenanceAction[] = ["Inspect", "Clean", "Repair", "Replace"];
+const VALID_LOCATIONS = ["top-left", "top-right", "center", "bottom-left", "bottom-right", "full bore"];
 const VALID_ISSUE_NAMES = [
-  "Pitting",
-  "Bulge",
-  "Corrosion",
-  "Flecking Off",
-  "Surface Spots",
-  "Cracks",
-  "Erosion",
-  "Carbon Fouling",
-  "Rifling Wear",
-  "Spot",
-  "Cuts",
-  "Ringed Barrel",
-  "Dent",
-  "Scratch/Scoring",
-  "Chrome Lining Damage",
+  "Bulge", "Flecking Off", "Ringed Barrel", "Pitting",
+  "Cuts", "Scratch / Scoring", "Corrosion", "Dent", "Carbon Deposit",
 ];
 
-function isSeverity(value: unknown): value is Severity {
-  return typeof value === "string" && VALID_SEVERITIES.includes(value as Severity);
+function isSeverity(v: unknown): v is Severity {
+  return typeof v === "string" && VALID_SEVERITIES.includes(v as Severity);
 }
-
-function isMaintenanceAction(value: unknown): value is MaintenanceAction {
-  return (
-    typeof value === "string" &&
-    VALID_MAINTENANCE_ACTIONS.includes(value as MaintenanceAction)
-  );
+function isMaintenanceAction(v: unknown): v is MaintenanceAction {
+  return typeof v === "string" && VALID_MAINTENANCE_ACTIONS.includes(v as MaintenanceAction);
 }
 
 function sanitiseIssue(raw: Record<string, unknown>): AnalysisIssue {
@@ -503,25 +575,23 @@ function sanitiseIssue(raw: Record<string, unknown>): AnalysisIssue {
         : "Unknown",
     severity: isSeverity(raw.severity) ? raw.severity : "Low",
     confidence:
-      typeof raw.confidence === "number" &&
-      raw.confidence >= 0 &&
-      raw.confidence <= 1
+      typeof raw.confidence === "number" && raw.confidence >= 0 && raw.confidence <= 1
         ? raw.confidence
         : 0,
     description:
-      typeof raw.description === "string" && raw.description.trim() !== ""
+      typeof raw.description === "string" && raw.description.trim()
         ? raw.description.trim()
         : "No description provided.",
     evidence:
-      typeof raw.evidence === "string" && raw.evidence.trim() !== ""
+      typeof raw.evidence === "string" && raw.evidence.trim()
         ? raw.evidence.trim()
         : "No evidence provided.",
     rootCause:
-      typeof raw.rootCause === "string" && raw.rootCause.trim() !== ""
+      typeof raw.rootCause === "string" && raw.rootCause.trim()
         ? raw.rootCause.trim()
         : "Unknown root cause.",
     solution:
-      typeof raw.solution === "string" && raw.solution.trim() !== ""
+      typeof raw.solution === "string" && raw.solution.trim()
         ? raw.solution.trim()
         : "Consult a qualified armourer.",
     maintenanceAction: isMaintenanceAction(raw.maintenanceAction)
@@ -529,7 +599,7 @@ function sanitiseIssue(raw: Record<string, unknown>): AnalysisIssue {
       : "Inspect",
     riskLevel: isSeverity(raw.riskLevel) ? raw.riskLevel : "Low",
     affectedArea:
-      typeof raw.affectedArea === "string" && raw.affectedArea.trim() !== ""
+      typeof raw.affectedArea === "string" && raw.affectedArea.trim()
         ? raw.affectedArea.trim()
         : "Unknown",
     location:
@@ -540,13 +610,11 @@ function sanitiseIssue(raw: Record<string, unknown>): AnalysisIssue {
 }
 
 // ─── String helpers ───────────────────────────────────────────────────────────
-
-function stripBase64Prefix(base64: string): string {
-  return base64.replace(/^data:image\/[a-zA-Z+]+;base64,/, "").trim();
+function stripBase64Prefix(b: string): string {
+  return b.replace(/^data:image\/[a-zA-Z+]+;base64,/, "").trim();
 }
-
-function cleanJsonText(text: string): string {
-  return text
+function cleanJsonText(t: string): string {
+  return t
     .replace(/^\uFEFF/, "")
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
@@ -554,30 +622,55 @@ function cleanJsonText(text: string): string {
 }
 
 // ─── Domain helpers ───────────────────────────────────────────────────────────
-
 function recomputeCriticalIssues(issues: AnalysisIssue[]): number {
   return issues.filter((i) => i.severity === "High").length;
 }
-
 function deriveOverallCondition(issues: AnalysisIssue[]): string {
   if (issues.some((i) => i.severity === "High")) return "Immediate Replacement Required";
   if (issues.some((i) => i.severity === "Medium") || issues.some((i) => i.severity === "Low"))
     return "Maintenance Required";
   return "Safe for Use";
 }
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
+}
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+// ─── Flecking Off confidence gate ─────────────────────────────────────────────
+function filterFleckingOff(issues: AnalysisIssue[]): {
+  filtered: AnalysisIssue[];
+  dropped: number;
+} {
+  const filtered: AnalysisIssue[] = [];
+  let dropped = 0;
+  for (const issue of issues) {
+    if (
+      issue.issueName === "Flecking Off" &&
+      issue.confidence < FLECKING_OFF_MIN_CONFIDENCE
+    ) {
+      dropped++;
+      console.warn(
+        `[barrel-analysis] Dropped Flecking Off — confidence ${issue.confidence} ` +
+          `below threshold ${FLECKING_OFF_MIN_CONFIDENCE}`
+      );
+    } else {
+      filtered.push(issue);
+    }
+  }
+  return { filtered, dropped };
 }
 
 function applyDefaults(parsed: Record<string, unknown>): AnalysisResult {
   const rawIssues = Array.isArray(parsed.issues) ? parsed.issues : [];
-  const issues: AnalysisIssue[] = rawIssues
+  const sanitised: AnalysisIssue[] = rawIssues
     .filter(
       (item): item is Record<string, unknown> =>
         item !== null && typeof item === "object" && !Array.isArray(item)
     )
     .map((item) => sanitiseIssue(item));
+
+  const { filtered: issues, dropped } = filterFleckingOff(sanitised);
+  if (dropped > 0)
+    console.log(`[barrel-analysis] ${dropped} Flecking Off issue(s) removed by confidence gate.`);
 
   const barrelHealthScore =
     typeof parsed.barrelHealthScore === "number"
@@ -593,44 +686,29 @@ function applyDefaults(parsed: Record<string, unknown>): AnalysisResult {
 }
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
-
 export async function GET() {
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    { status: 405, headers: { Allow: "POST" } }
-  );
+  return NextResponse.json({ error: "Method not allowed" }, { status: 405, headers: { Allow: "POST" } });
 }
 export async function PUT() {
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    { status: 405, headers: { Allow: "POST" } }
-  );
+  return NextResponse.json({ error: "Method not allowed" }, { status: 405, headers: { Allow: "POST" } });
 }
 export async function PATCH() {
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    { status: 405, headers: { Allow: "POST" } }
-  );
+  return NextResponse.json({ error: "Method not allowed" }, { status: 405, headers: { Allow: "POST" } });
 }
 export async function DELETE() {
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    { status: 405, headers: { Allow: "POST" } }
-  );
+  return NextResponse.json({ error: "Method not allowed" }, { status: 405, headers: { Allow: "POST" } });
 }
 
 export async function POST(req: NextRequest) {
-  // 1. API key check.
+  // 1. API key check
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("[barrel-analysis] ANTHROPIC_API_KEY is not set");
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
-
-  // Log key prefix only — never log the full key.
   console.log(`[barrel-analysis] Using API key: ${apiKey.slice(0, 10)}…`);
 
-  // 2. Payload size guard.
+  // 2. Payload size guard
   const contentLength = req.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_BYTES) {
     return NextResponse.json(
@@ -639,7 +717,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 3. Parse body.
+  // 3. Parse body
   let base64Raw: unknown;
   let mediaTypeRaw: unknown;
   try {
@@ -647,9 +725,9 @@ export async function POST(req: NextRequest) {
     if (body === null || typeof body !== "object" || Array.isArray(body)) {
       return NextResponse.json({ error: "Request body must be a JSON object" }, { status: 400 });
     }
-    const typedBody = body as Record<string, unknown>;
-    base64Raw = typedBody.base64;
-    mediaTypeRaw = typedBody.mediaType;
+    const tb = body as Record<string, unknown>;
+    base64Raw = tb.base64;
+    mediaTypeRaw = tb.mediaType;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -658,20 +736,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing or empty 'base64' field" }, { status: 400 });
   }
 
-  // 4. Media type.
+  // 4. Media type
   const resolvedMediaType: ValidMediaType =
     typeof mediaTypeRaw === "string" &&
     VALID_MEDIA_TYPES.includes(mediaTypeRaw as ValidMediaType)
       ? (mediaTypeRaw as ValidMediaType)
       : "image/jpeg";
 
-  // 5. Strip data-URL prefix and validate base64 charset.
+  // 5. Strip data-URL prefix and validate base64
   const base64Clean = stripBase64Prefix(base64Raw);
   if (!/^[A-Za-z0-9+/=\r\n]+$/.test(base64Clean)) {
     return NextResponse.json({ error: "Invalid base64 image data" }, { status: 400 });
   }
 
-  // Log approximate decoded size — Anthropic rejects images > ~5 MB decoded.
   const approxKB = Math.round((base64Clean.length * 3) / 4 / 1024);
   console.log(`[barrel-analysis] Image payload ~${approxKB} KB, mediaType=${resolvedMediaType}`);
   if (approxKB > 5_000) {
@@ -680,11 +757,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 6. Call Anthropic API.
+  // 6. Call Anthropic API
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
   let anthropicResponse: Response;
+
   try {
     anthropicResponse = await fetch(ANTHROPIC_API_URL, {
       method: "POST",
@@ -713,7 +790,30 @@ export async function POST(req: NextRequest) {
               },
               {
                 type: "text",
-                text: "Perform a comprehensive barrel fault inspection on this image. Return ONLY the complete JSON analysis. No markdown, no extra text, no explanations.",
+                text: `Perform a comprehensive barrel fault inspection on this image.
+
+MANDATORY FIRST STEP — DETERMINE VIEW TYPE:
+
+Look at the image and answer these questions before doing anything else:
+
+Q1: Does the bore wall fill most or all of the image frame, with a dark tunnel at the center?
+Q2: Is there a dark circular ring or shadow band visible at mid-radius inside the bore?
+Q3: Are light/white areas covering a broad area of the bore face (not small isolated patches)?
+Q4: Are you looking along a bore tunnel with lands/grooves running lengthwise and a bright spot at the far end?
+
+APPLY THESE RULES:
+
+IF Q4=YES → SIDE/ENDOSCOPIC VIEW (Type C). Apply side view detection rules.
+
+IF Q1=YES AND Q4=NO → CLOSE-UP END-ON VIEW (Type B). Apply these rules:
+  - IF Q2=YES: the dark ring is a BULGE and RINGED BARREL (both, High severity). Report both.
+  - IF Q3=YES: the broad light/white bore face is from LIGHTING — NOT Flecking Off. Do not report.
+  - Flecking Off ONLY if a small isolated patch has a physically raised peeling edge,
+    jagged non-geometric boundary, and two-tone substrate contrast simultaneously.
+
+IF NEITHER Q1 NOR Q4 → STANDARD END-ON VIEW (Type A). Apply standard end-on rules.
+
+Return ONLY the complete JSON analysis. No markdown, no extra text, no explanations.`,
               },
             ],
           },
@@ -735,24 +835,20 @@ export async function POST(req: NextRequest) {
     clearTimeout(timeout);
   }
 
-  // 7. Handle non-OK Anthropic responses with full diagnosis.
+  // 7. Handle non-OK responses
   if (!anthropicResponse.ok) {
     const { userMessage, logDetail } = await parseAnthropicError(anthropicResponse);
     console.error(`[barrel-analysis] Anthropic API error — ${logDetail}`);
-
     if (anthropicResponse.status === 429) {
       return NextResponse.json(
         { error: "Rate limit reached. Please wait before retrying." },
         { status: 429 }
       );
     }
-
-    // Forward the Anthropic HTTP status so callers can distinguish
-    // 400 (bad image/request) from 5xx (service-side problems).
     return NextResponse.json({ error: userMessage }, { status: anthropicResponse.status });
   }
 
-  // 8. Parse Anthropic response envelope.
+  // 8. Parse Anthropic response envelope
   let apiData: unknown;
   try {
     apiData = await anthropicResponse.json();
@@ -774,25 +870,18 @@ export async function POST(req: NextRequest) {
 
   const apiObj = apiData as Record<string, unknown>;
 
-  // 9. Check stop_reason — "max_tokens" means the JSON was truncated mid-response.
+  // 9. Check stop_reason
   const stopReason = apiObj.stop_reason;
   console.log(`[barrel-analysis] Anthropic stop_reason=${stopReason}`);
   if (stopReason === "max_tokens") {
-    console.warn(
-      "[barrel-analysis] Response truncated (max_tokens hit). " +
-        "JSON will be incomplete. Increase MAX_TOKENS if this recurs."
-    );
+    console.warn("[barrel-analysis] Response truncated (max_tokens hit).");
     return NextResponse.json(
-      {
-        error:
-          "Analysis response was truncated due to length. " +
-          "The image may be very complex — please try again.",
-      },
+      { error: "Analysis response was truncated due to length. Please try again." },
       { status: 500 }
     );
   }
 
-  // 10. Extract text block.
+  // 10. Extract text block
   const contentArray = apiObj.content;
   if (!Array.isArray(contentArray)) {
     console.error("[barrel-analysis] Missing content array:", apiObj);
@@ -812,26 +901,24 @@ export async function POST(req: NextRequest) {
   );
 
   if (!textBlock) {
-    console.error(
-      "[barrel-analysis] No text block found in response:",
-      JSON.stringify(apiObj)
-    );
+    console.error("[barrel-analysis] No text block found:", JSON.stringify(apiObj));
     return NextResponse.json(
       { error: "Unexpected response format from analysis service" },
       { status: 500 }
     );
   }
 
-  // 11. Parse JSON from model output.
+  // 11. Parse JSON from model output
   const cleaned = cleanJsonText(textBlock.text);
   let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
-  } catch (parseErr) {
+  } catch (e) {
     console.error(
       "[barrel-analysis] JSON parse error.",
-      "\nError:", parseErr,
-      "\nRaw model output (first 500 chars):", textBlock.text.slice(0, 500)
+      e,
+      "\nRaw output (first 500):",
+      cleaned.slice(0, 500)
     );
     return NextResponse.json(
       { error: "Failed to parse analysis response. The model returned malformed JSON." },
@@ -846,7 +933,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 12. Sanitise, recompute derived fields, and return.
+  // 12. Sanitise, apply confidence gate, recompute derived fields, return
   const result = applyDefaults(parsed as Record<string, unknown>);
   console.log(
     `[barrel-analysis] Success — score=${result.barrelHealthScore} ` +
